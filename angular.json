@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "ERP": {
+    "frp": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -14,9 +14,7 @@
           "builder": "@angular/build:application",
           "options": {
             "browser": "src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
+            "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
@@ -56,10 +54,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "ERP:build:production"
+              "buildTarget": "frp:build:production"
             },
             "development": {
-              "buildTarget": "ERP:build:development"
+              "buildTarget": "frp:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -70,10 +68,7 @@
         "test": {
           "builder": "@angular/build:karma",
           "options": {
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
+            "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
             "assets": [
               {
