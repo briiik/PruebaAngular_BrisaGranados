@@ -1,1 +1,23 @@
-<h1 class="titulo">Inicio de Sesión</h1>
+<div class="container">
+  <div class="card">
+    <h2>Inicio de Sesión</h2>
+
+    <div class="error-box" *ngIf="error">
+        Usuario o contraseña incorrectos
+    </div>
+
+    <div class="campo">
+      <label>Usuario</label>
+      <input type="text" [(ngModel)]="usuario" placeholder="Ingresa tu usuario" />
+    </div>
+
+    <div class="campo">
+      <label>Contraseña</label>
+      <input type="password" [(ngModel)]="password" placeholder="Ingresa tu contraseña" />
+    </div>
+
+    <button class="btn-azul" (click)="login()">Iniciar Sesión</button>
+
+    <p class="link">¿No tienes cuenta? <a routerLink="/register">Regístrate</a></p>
+  </div>
+</div>

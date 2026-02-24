@@ -1,1 +1,62 @@
-<h1 class="titulo">Registro</h1>
+<div class="container">
+  <div class="card">
+    <h2>Registro</h2>
+
+    <div class="exito-box" *ngIf="exitoso">
+        ¡Registro exitoso! Bienvenido {{ form.nombreCompleto }}
+    </div>
+
+    <div class="campo">
+      <label>Usuario *</label>
+      <input type="text" [(ngModel)]="form.usuario" placeholder="Nombre de usuario" />
+      <small class="error" *ngIf="errores.usuario">{{ errores.usuario }}</small>
+    </div>
+
+    <div class="campo">
+      <label>Email *</label>
+      <input type="email" [(ngModel)]="form.email" placeholder="correo@ejemplo.com" />
+      <small class="error" *ngIf="errores.email">{{ errores.email }}</small>
+    </div>
+
+    <div class="campo">
+      <label>Nombre Completo *</label>
+      <input type="text" [(ngModel)]="form.nombreCompleto" placeholder="Tu nombre completo" />
+      <small class="error" *ngIf="errores.nombreCompleto">{{ errores.nombreCompleto }}</small>
+    </div>
+
+    <div class="campo">
+      <label>Dirección *</label>
+      <input type="text" [(ngModel)]="form.direccion" placeholder="Tu dirección" />
+      <small class="error" *ngIf="errores.direccion">{{ errores.direccion }}</small>
+    </div>
+
+    <div class="campo">
+      <label>Fecha de Nacimiento *</label>
+      <input type="date" [(ngModel)]="form.fechaNacimiento" />
+      <small class="error" *ngIf="errores.fechaNacimiento">{{ errores.fechaNacimiento }}</small>
+    </div>
+
+    <div class="campo">
+      <label>Teléfono *</label>
+      <input type="tel" [(ngModel)]="form.telefono" placeholder="10 dígitos" maxlength="10"
+        (keypress)="$event.charCode >= 48 && $event.charCode <= 57" />
+      <small class="error" *ngIf="errores.telefono">{{ errores.telefono }}</small>
+    </div>
+
+    <div class="campo">
+      <label>Contraseña *</label>
+      <input type="password" [(ngModel)]="form.password" placeholder="Contraseña" />
+      <small class="error" *ngIf="errores.password">{{ errores.password }}</small>
+    </div>
+
+    <div class="campo">
+      <label>Confirmar Contraseña *</label>
+      <input type="password" [(ngModel)]="form.confirmPassword" placeholder="Confirma tu contraseña" />
+      <small class="error" *ngIf="errores.confirmPassword">{{ errores.confirmPassword }}</small>
+    </div>
+
+    <button class="btn-morado" (click)="registrar()">Registrarse</button>
+
+    <p class="link">¿Ya tienes cuenta? <a routerLink="/login">Inicia sesión</a></p>
+  </div>
+</div>
