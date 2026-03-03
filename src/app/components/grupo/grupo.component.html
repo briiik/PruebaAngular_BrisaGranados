@@ -1,0 +1,76 @@
+<div style="padding: 2rem;">
+
+  <h2 style="margin-bottom: 1.5rem;">
+    <i class="pi pi-users" style="margin-right: 0.5rem;"></i>
+    Grupo IDGS14
+  </h2>
+
+  <p-divider></p-divider>
+
+  <!-- Tarjetas de estadísticas -->
+  <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem;">
+
+    <div style="flex: 1; min-width: 150px;">
+      <p-card header="Total Alumnos">
+        <p style="font-size: 2rem; font-weight: bold; margin: 0;">32</p>
+        <p-tag value="Activo" severity="success"></p-tag>
+      </p-card>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <p-card header="Materias">
+        <p style="font-size: 2rem; font-weight: bold; margin: 0;">8</p>
+        <p-tag value="Semestre 4" severity="info"></p-tag>
+      </p-card>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <p-card header="Promedio General">
+        <p style="font-size: 2rem; font-weight: bold; margin: 0;">8.7</p>
+        <p-tag value="Bueno" severity="warn"></p-tag>
+      </p-card>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <p-card header="Asistencia">
+        <p style="font-size: 2rem; font-weight: bold; margin: 0;">91%</p>
+        <p-tag value="Regular" severity="success"></p-tag>
+      </p-card>
+    </div>
+
+  </div>
+
+  <p-divider align="left">
+    <span style="font-weight: 600;">Integrantes</span>
+  </p-divider>
+
+  <!-- Tabla de alumnos -->
+  <p-table [value]="alumnos" [paginator]="false" [rows]="5" styleClass="p-datatable-sm">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>#</th>
+        <th>Nombre</th>
+        <th>Matrícula</th>
+        <th>Promedio</th>
+        <th>Estado</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-alumno>
+      <tr>
+        <td>{{ alumno.id }}</td>
+        <td>{{ alumno.nombre }}</td>
+        <td>{{ alumno.matricula }}</td>
+        <td>{{ alumno.promedio }}</td>
+        <td>
+          <p-tag 
+            [value]="alumno.estado" 
+            [severity]="alumno.estado === 'Regular' ? 'success' : 'warn'">
+          </p-tag>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+</div>
+
+<p-toast></p-toast>

@@ -2,11 +2,14 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, ToastModule],
+  providers: [MessageService],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.css']
 })
@@ -24,7 +27,12 @@ export class RegisterComponent {
   };
 
   errores: any = {};
-  exitoso = false;
+
+  // Toggle de visibilidad de contraseñas
+  mostrarPassword = false;
+  mostrarConfirmPassword = false;
+
+  constructor(private messageService: MessageService) {}
 
   get passwordRegex() {
     return /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{10,}$/;
@@ -74,7 +82,12 @@ export class RegisterComponent {
 
   registrar() {
     if (this.validar()) {
-      this.exitoso = true;
+      this.messageService.add({
+        severity: 'success',
+        summary: '¡Registro exitoso!',
+        detail: `Bienvenido, ${this.form.nombreCompleto}`,
+        life: 4000
+      });
     }
   }
 }

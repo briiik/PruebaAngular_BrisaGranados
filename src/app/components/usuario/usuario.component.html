@@ -1,0 +1,53 @@
+<div style="padding: 2rem;">
+
+  <h2 style="margin-bottom: 1.5rem;">
+    <i class="pi pi-id-card" style="margin-right: 0.5rem;"></i>
+    Usuario
+  </h2>
+
+  <p-divider></p-divider>
+
+  <!-- Perfil del usuario -->
+  <p-card>
+    <ng-template pTemplate="header">
+      <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem 1rem 0 1rem;">
+        <p-avatar label="A" shape="circle" size="xlarge"></p-avatar>
+        <div>
+          <h3 style="margin: 0;">Ana García</h3>
+          <p-tag value="Administrador" severity="info"></p-tag>
+        </div>
+      </div>
+    </ng-template>
+
+    <p-divider align="left">
+      <span style="font-weight: 600;">Información personal</span>
+    </p-divider>
+
+    <!-- Datos en tabla -->
+    <p-table [value]="datosUsuario" styleClass="p-datatable-sm p-datatable-striped">
+      <ng-template pTemplate="body" let-dato>
+        <tr>
+          <td style="font-weight: 600; width: 40%;">
+            <i [class]="dato.icon" style="margin-right: 0.5rem;"></i>
+            {{ dato.campo }}
+          </td>
+          <td>{{ dato.valor }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+
+    <p-divider align="left">
+      <span style="font-weight: 600;">Acciones</span>
+    </p-divider>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <p-button label="Editar perfil" icon="pi pi-pencil" severity="secondary"></p-button>
+      <p-button label="Cambiar contraseña" icon="pi pi-lock" severity="warn"></p-button>
+      <p-button label="Cerrar sesión" icon="pi pi-sign-out" severity="danger"></p-button>
+    </div>
+
+  </p-card>
+
+</div>
+
+<p-toast></p-toast>

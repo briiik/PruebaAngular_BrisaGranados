@@ -1,0 +1,27 @@
+<p-drawer 
+  [visible]="visible" 
+  (visibleChange)="onVisibleChange($event)"
+  appendTo="body">
+
+  <ng-template pTemplate="header">
+    <h3 style="margin: 0;">Hola</h3>
+  </ng-template>
+
+  <ng-template pTemplate="content">
+
+    <!-- Espacio para imagen -->
+    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 1rem; height: 120px; border: 2px dashed var(--surface-300); border-radius: 8px; color: var(--text-color-secondary); font-size: 0.85rem;">
+      Imagen
+    </div>
+
+    <p-menu [model]="menuItems"></p-menu>
+
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <p style="text-align: center; color: var(--text-color-secondary); font-size: 0.75rem; margin: 0;">
+      Version 4.0
+    </p>
+  </ng-template>
+
+</p-drawer>

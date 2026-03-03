@@ -22,7 +22,8 @@ export class LoginComponent {
   login() {
     if (this.usuario === this.credenciales.usuario && this.password === this.credenciales.password) {
       this.error = false;
-      this.router.navigate(['/']);
+      // Pasa el nombre de usuario como state al navegar
+      this.router.navigate(['/principal'], { state: { usuario: this.usuario } });
     } else {
       this.error = true;
     }

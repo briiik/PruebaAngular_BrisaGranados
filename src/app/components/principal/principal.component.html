@@ -1,0 +1,34 @@
+<!-- Sidebar -->
+<app-slidebar [(visible)]="sidebarVisible"></app-slidebar>
+
+<!-- Navbar superior -->
+<p-toolbar>
+  <ng-template pTemplate="start">
+    <p-button icon="pi pi-bars" [text]="true" severity="secondary" (onClick)="sidebarVisible = true"></p-button>
+    <span style="font-weight: 600; margin-left: 0.5rem;">Principal</span>
+  </ng-template>
+
+  <ng-template pTemplate="end">
+    <p-avatar [label]="usuario.charAt(0).toUpperCase()" shape="circle" style="cursor:pointer" (click)="userMenu.toggle($event)"></p-avatar>
+    <p-menu #userMenu [model]="userMenuItems" [popup]="true"></p-menu>
+  </ng-template>
+</p-toolbar>
+
+<!-- Contenido principal -->
+<div style="padding: 2rem;">
+
+  <!-- Mensaje de bienvenida -->
+  <p-card>
+    <ng-template pTemplate="header">
+      <div style="padding: 1rem 1rem 0 1rem;">
+        <p-tag icon="pi pi-user" value="Sesión activa" severity="success"></p-tag>
+      </div>
+    </ng-template>
+    <h2 style="margin: 0;">¡Bienvenido!</h2>
+    <p style="color: var(--text-color-secondary);">Has iniciado sesión correctamente.</p>
+  </p-card>
+
+</div>
+
+<!-- Toast para notificaciones -->
+<p-toast></p-toast>
