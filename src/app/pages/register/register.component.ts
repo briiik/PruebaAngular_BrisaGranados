@@ -3,12 +3,35 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { MessageService } from 'primeng/api';
+
+// PrimeNG
 import { ToastModule } from 'primeng/toast';
+import { CardModule } from 'primeng/card';
+import { InputTextModule } from 'primeng/inputtext';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
+import { PasswordModule } from 'primeng/password';
+import { DatePickerModule } from 'primeng/datepicker';
+import { ButtonModule } from 'primeng/button';
+import { DividerModule } from 'primeng/divider';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ToastModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    ToastModule,
+    CardModule,
+    InputTextModule,
+    IconFieldModule,
+    InputIconModule,
+    PasswordModule,
+    DatePickerModule,
+    ButtonModule,
+    DividerModule
+  ],
   providers: [MessageService],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.css']
@@ -22,15 +45,11 @@ export class RegisterComponent {
     confirmPassword: '',
     nombreCompleto: '',
     direccion: '',
-    fechaNacimiento: '',
+    fechaNacimiento: null as Date | null,
     telefono: ''
   };
 
   errores: any = {};
-
-  // Toggle de visibilidad de contraseñas
-  mostrarPassword = false;
-  mostrarConfirmPassword = false;
 
   constructor(private messageService: MessageService) {}
 
@@ -38,12 +57,11 @@ export class RegisterComponent {
     return /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{10,}$/;
   }
 
-  esMayorDeEdad(fecha: string): boolean {
+  esMayorDeEdad(fecha: Date): boolean {
     const hoy = new Date();
-    const nacimiento = new Date(fecha);
-    let edad = hoy.getFullYear() - nacimiento.getFullYear();
-    const mes = hoy.getMonth() - nacimiento.getMonth();
-    if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
+    let edad = hoy.getFullYear() - fecha.getFullYear();
+    const mes = hoy.getMonth() - fecha.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fecha.getDate())) edad--;
     return edad >= 18;
   }
 
