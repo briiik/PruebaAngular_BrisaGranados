@@ -1,6 +1,6 @@
 <div style="padding: 2rem;">
 
-  <h2 style="margin-bottom: 1.5rem;">
+  <h2 style="margin-bottom: 1.5rem; text-align: center;">
     <i class="pi pi-id-card" style="margin-right: 0.5rem;"></i>
     Usuario
   </h2>
@@ -11,9 +11,9 @@
   <p-card>
     <ng-template pTemplate="header">
       <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem 1rem 0 1rem;">
-        <p-avatar label="A" shape="circle" size="xlarge"></p-avatar>
+        <p-avatar image="https://storage.waifuwall.com/preview/1038.webp" shape="circle" size="xlarge"></p-avatar>
         <div>
-          <h3 style="margin: 0;">Ana García</h3>
+          <h3 style="margin: 0;">{{ usuario.nombreCompleto }}</h3>
           <p-tag value="Administrador" severity="info"></p-tag>
         </div>
       </div>
@@ -23,7 +23,6 @@
       <span style="font-weight: 600;">Información personal</span>
     </p-divider>
 
-    <!-- Datos en tabla -->
     <p-table [value]="datosUsuario" styleClass="p-datatable-sm p-datatable-striped">
       <ng-template pTemplate="body" let-dato>
         <tr>
@@ -41,13 +40,104 @@
     </p-divider>
 
     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-      <p-button label="Editar perfil" icon="pi pi-pencil" severity="secondary"></p-button>
-      <p-button label="Cambiar contraseña" icon="pi pi-lock" severity="warn"></p-button>
+      <p-button label="Editar perfil" icon="pi pi-pencil" severity="secondary" (onClick)="abrirEdicion()"></p-button>
+      <p-button label="Cambiar contraseña" icon="pi pi-lock" severity="warn" (onClick)="abrirCambioPassword()"></p-button>
       <p-button label="Cerrar sesión" icon="pi pi-sign-out" severity="danger"></p-button>
     </div>
 
   </p-card>
 
 </div>
+
+<!-- Modal Editar Perfil -->
+<p-dialog header="Editar Perfil" [(visible)]="modalEdicionVisible" [modal]="true" [draggable]="false" [resizable]="false" [style]="{ width: '500px' }">
+
+  <div style="display:flex; flex-direction:column; gap:1rem; padding-top:0.5rem;">
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Usuario</label>
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-user"></p-inputicon>
+        <input pInputText [(ngModel)]="formEdicion.usuario" placeholder="Nombre de usuario" style="width:100%;" />
+      </p-iconfield>
+    </div>
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Nombre Completo</label>
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-id-card"></p-inputicon>
+        <input pInputText [(ngModel)]="formEdicion.nombreCompleto" placeholder="Nombre completo" style="width:100%;" />
+      </p-iconfield>
+    </div>
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Email</label>
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-envelope"></p-inputicon>
+        <input pInputText [(ngModel)]="formEdicion.email" placeholder="correo@ejemplo.com" style="width:100%;" />
+      </p-iconfield>
+    </div>
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Teléfono</label>
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-phone"></p-inputicon>
+        <input pInputText [(ngModel)]="formEdicion.telefono" placeholder="10 dígitos" maxlength="10" style="width:100%;" />
+      </p-iconfield>
+    </div>
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Dirección</label>
+      <p-iconfield>
+        <p-inputicon styleClass="pi pi-map-marker"></p-inputicon>
+        <input pInputText [(ngModel)]="formEdicion.direccion" placeholder="Tu dirección" style="width:100%;" />
+      </p-iconfield>
+    </div>
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Fecha de Nacimiento</label>
+      <p-datepicker [(ngModel)]="formEdicion.fechaNacimiento" dateFormat="yy-mm-dd" [showIcon]="true" style="width:100%;"></p-datepicker>
+    </div>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancelar" icon="pi pi-times" severity="secondary" [text]="true" (onClick)="modalEdicionVisible = false"></p-button>
+    <p-button label="Guardar cambios" icon="pi pi-check" (onClick)="guardarEdicion()"></p-button>
+  </ng-template>
+
+</p-dialog>
+
+<!-- Modal Cambiar Contraseña -->
+<p-dialog header="Cambiar Contraseña" [(visible)]="modalPasswordVisible" [modal]="true" [draggable]="false" [resizable]="false" [style]="{ width: '420px' }">
+
+  <div style="display:flex; flex-direction:column; gap:1rem; padding-top:0.5rem;">
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Contraseña actual</label>
+      <p-password [(ngModel)]="formPassword.actual" placeholder="Contraseña actual" [toggleMask]="true" [feedback]="false" style="width:100%;"></p-password>
+      <small class="p-error" *ngIf="erroresPassword.actual">{{ erroresPassword.actual }}</small>
+    </div>
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Nueva contraseña</label>
+      <p-password [(ngModel)]="formPassword.nueva" placeholder="Nueva contraseña" [toggleMask]="true" [feedback]="true" style="width:100%;"></p-password>
+      <small class="p-error" *ngIf="erroresPassword.nueva">{{ erroresPassword.nueva }}</small>
+    </div>
+
+    <div>
+      <label style="display:block; margin-bottom:0.4rem; font-weight:600;">Confirmar nueva contraseña</label>
+      <p-password [(ngModel)]="formPassword.confirmar" placeholder="Confirma la nueva contraseña" [toggleMask]="true" [feedback]="false" style="width:100%;"></p-password>
+      <small class="p-error" *ngIf="erroresPassword.confirmar">{{ erroresPassword.confirmar }}</small>
+    </div>
+
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancelar" icon="pi pi-times" severity="secondary" [text]="true" (onClick)="modalPasswordVisible = false"></p-button>
+    <p-button label="Cambiar contraseña" icon="pi pi-check" severity="warn" (onClick)="guardarPassword()"></p-button>
+  </ng-template>
+
+</p-dialog>
 
 <p-toast></p-toast>
