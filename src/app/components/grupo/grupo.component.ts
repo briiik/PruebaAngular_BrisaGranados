@@ -1,12 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { DividerModule } from 'primeng/divider';
-import { TableModule } from 'primeng/table';
 import { ToastModule } from 'primeng/toast';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
@@ -15,6 +15,13 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TextareaModule } from 'primeng/textarea';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TooltipModule } from 'primeng/tooltip';
+import { AvatarModule } from 'primeng/avatar';
+import { MessageModule } from 'primeng/message';
+import { SelectModule } from 'primeng/select';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
+
+import { NavbarComponent } from '../navbar/navbar.component';
 
 export interface Grupo {
   id: number;
@@ -35,7 +42,6 @@ export interface Grupo {
     CardModule,
     TagModule,
     DividerModule,
-    TableModule,
     ToastModule,
     ButtonModule,
     DialogModule,
@@ -43,18 +49,30 @@ export interface Grupo {
     InputNumberModule,
     TextareaModule,
     ConfirmDialogModule,
-    TooltipModule
+    TooltipModule,
+    AvatarModule,
+    MessageModule,
+    SelectModule,
+    NavbarComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './grupo.component.html',
   styleUrls: ['./grupo.component.css']
 })
-export class GrupoComponent {
+export class GrupoComponent implements OnInit {
 
   grupos: Grupo[] = [
-    { id: 1, nombre: 'IDGS14', nivel: 'Avanzado', autor: 'Brisa',    integrantes: 4, tickets: 12, descripcion: 'Grupo de desarrollo de software' },
+    { id: 1, nombre: 'IDGS14', nivel: 'Avanzado',   autor: 'Brisa',    integrantes: 4, tickets: 12, descripcion: 'Grupo de desarrollo de software' },
     { id: 2, nombre: 'IDGS10', nivel: 'Intermedio', autor: 'Jonathan', integrantes: 3, tickets: 8,  descripcion: 'Grupo de análisis de sistemas' },
   ];
+
+  nivelesOptions = [
+    { label: 'Básico',     value: 'Básico' },
+    { label: 'Intermedio', value: 'Intermedio' },
+    { label: 'Avanzado',   value: 'Avanzado' },
+  ];
+
+  avatarColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 
   modalVisible = false;
   modoEdicion = false;
@@ -65,11 +83,37 @@ export class GrupoComponent {
 
   constructor(
     private messageService: MessageService,
-    private confirmationService: ConfirmationService
+    private confirmationService: ConfirmationService,
+    private router: Router
   ) {}
+
+  ngOnInit() {
+    const nav = this.router.getCurrentNavigation();
+    const state = nav?.extras?.state as { usuario?: string };
+    if (state?.usuario) {
+      localStorage.setItem('usuarioActual', state.usuario);
+    }
+  }
 
   formVacio() {
     return { nombre: '', nivel: '', autor: '', integrantes: null as number | null, tickets: null as number | null, descripcion: '' };
+  }
+
+  getAvatarColor(id: number): string {
+    return this.avatarColors[(id - 1) % this.avatarColors.length];
+  }
+
+  getNivelSeverity(nivel: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
+    const map: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary'> = {
+      'Básico':     'info',
+      'Intermedio': 'warn',
+      'Avanzado':   'success',
+    };
+    return map[nivel] ?? 'secondary';
+  }
+
+  irAlDashboard(grupo: Grupo) {
+    this.router.navigate(['/grupo-dashboard', grupo.id], { state: { grupo } });
   }
 
   abrirModal() {
@@ -77,6 +121,11 @@ export class GrupoComponent {
     this.form = this.formVacio();
     this.errores = {};
     this.modalVisible = true;
+  }
+
+  editarCard(event: Event, grupo: Grupo) {
+    event.stopPropagation();
+    this.editar(grupo);
   }
 
   editar(grupo: Grupo) {
@@ -119,6 +168,11 @@ export class GrupoComponent {
     }
 
     this.cerrarModal();
+  }
+
+  confirmarEliminarCard(event: Event, grupo: Grupo) {
+    event.stopPropagation();
+    this.confirmarEliminar(grupo);
   }
 
   confirmarEliminar(grupo: Grupo) {

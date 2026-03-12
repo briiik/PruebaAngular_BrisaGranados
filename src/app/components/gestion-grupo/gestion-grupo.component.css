@@ -1,0 +1,225 @@
+/* ── Layout ───────────────────────────────────────────────────────────── */
+.page-wrapper {
+  padding: 2rem 3rem;
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+}
+
+/* ── Demo selector ────────────────────────────────────────────────────── */
+.demo-selector {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.demo-label {
+  font-size: 0.8rem;
+  color: var(--text-color-secondary);
+}
+
+.permisos-tags {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+/* ── Tabla ────────────────────────────────────────────────────────────── */
+.tabla-caption {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Fondo blanco en todas las filas */
+:host ::ng-deep .p-datatable .p-datatable-tbody > tr {
+  background: #ffffff !important;
+}
+
+/* Encabezados gris claro */
+:host ::ng-deep .p-datatable .p-datatable-thead > tr > th {
+  background-color: #f1f5f9 !important;
+}
+
+.miembro-nombre-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.email-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.email-icon {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+}
+
+.permisos-cell {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.permiso-tag {
+  font-size: 0.65rem;
+}
+
+.sin-permisos {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+}
+
+.acciones-cell {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tabla-empty {
+  text-align: center;
+  padding: 2rem;
+}
+
+.empty-icon {
+  font-size: 2rem;
+  color: #ccc;
+}
+
+/* ── Configuración ────────────────────────────────────────────────────── */
+.config-wrapper {
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-top: 0.5rem;
+}
+
+.nombre-grupo-row {
+  display: flex;
+  gap: 0.5rem;
+  width: 80%;
+}
+
+.nombre-grupo-row .form-input {
+  flex: 1;
+  width: auto;
+}
+
+.config-footer-btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.danger-btns {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+/* ── Formularios modales ─────────────────────────────────────────────── */
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-top: 0.5rem;
+}
+
+.form-campo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.form-label {
+  display: block;
+  font-weight: 300;
+  width: 100%;
+  text-align: center;
+}
+
+.form-input {
+  width: 80%;
+}
+
+:host ::ng-deep .form-input.p-select {
+  width: 80%;
+}
+
+/* ── Usuario encontrado card ──────────────────────────────────────────── */
+.usuario-encontrado-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--surface-ground);
+  border-radius: 8px;
+  border: 1px solid var(--surface-border);
+}
+
+.usuario-nombre {
+  margin: 0;
+  font-weight: 600;
+}
+
+.usuario-email {
+  color: var(--text-color-secondary);
+}
+
+.divider-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ── Modal detalle ────────────────────────────────────────────────────── */
+.detalle-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.detalle-nombre {
+  margin: 0;
+}
+
+.detalle-email {
+  margin: 0.2rem 0 0 0;
+  color: var(--text-color-secondary);
+}
+
+.detalle-tags {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.detalle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.detalle-field-label {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.detalle-field-value {
+  margin: 0.3rem 0 0 0;
+  font-weight: 500;
+}

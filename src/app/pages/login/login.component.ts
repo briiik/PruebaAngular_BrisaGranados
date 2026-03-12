@@ -41,14 +41,14 @@ export class LoginComponent {
   password = '';
   error = false;
 
-  private credenciales = { usuario: 'admin', password: 'Admin@12345' };
+  private credenciales = { usuario: 'admin', password: 'Hola' };
 
   constructor(private router: Router) {}
 
   login() {
     if (this.usuario === this.credenciales.usuario && this.password === this.credenciales.password) {
       this.error = false;
-      this.router.navigate(['/principal'], { state: { usuario: this.usuario } });
+      this.router.navigate(['/grupo'], { state: { usuario: this.usuario } });
     } else {
       this.error = true;
     }

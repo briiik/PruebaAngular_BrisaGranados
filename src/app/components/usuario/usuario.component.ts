@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 import { CardModule } from 'primeng/card';
@@ -9,13 +10,32 @@ import { TagModule } from 'primeng/tag';
 import { DividerModule } from 'primeng/divider';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
-import { ToastModule } from 'primeng/toast';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
 import { PasswordModule } from 'primeng/password';
 import { DatePickerModule } from 'primeng/datepicker';
+import { ToastModule } from 'primeng/toast';
+import { MessageModule } from 'primeng/message';
+
+import { NavbarComponent } from '../navbar/navbar.component';
+
+interface UsuarioPerfil {
+  nombreCompleto: string;
+  usuario: string;
+  email: string;
+  telefono: string;
+  direccion: string;
+  fechaNacimiento: string;
+}
+
+interface FormEdicion {
+  nombreCompleto: string;
+  usuario: string;
+  email: string;
+  telefono: string;
+  direccion: string;
+  fechaNacimiento: Date | null;
+}
 
 @Component({
   selector: 'app-usuario',
@@ -29,103 +49,107 @@ import { DatePickerModule } from 'primeng/datepicker';
     DividerModule,
     TableModule,
     ButtonModule,
-    ToastModule,
     DialogModule,
     InputTextModule,
-    IconFieldModule,
-    InputIconModule,
     PasswordModule,
-    DatePickerModule
+    DatePickerModule,
+    ToastModule,
+    MessageModule,
+    NavbarComponent,
   ],
   providers: [MessageService],
   templateUrl: './usuario.component.html',
   styleUrls: ['./usuario.component.css']
 })
-export class UsuarioComponent {
+export class UsuarioComponent implements OnInit {
 
-  // Datos del usuario (simulando los del registro)
-  usuario = {
-    usuario:         'admin',
-    nombreCompleto:  'Brisa Granados C',
-    email:           '2018140039@uteq.edu.mx',
-    telefono:        '4423786550',
-    direccion:       'Col. Insurgentes 158, Querétaro',
-    fechaNacimiento: new Date('2000-07-08'),
-    password:        'Admin@12345'
+  usuario: UsuarioPerfil = {
+    nombreCompleto: 'Brisa Granados',
+    usuario: 'Brik',
+    email: 'brisa.granados158@gmail.com',
+    telefono: '4423786550',
+    direccion: 'Calle Crisantemos 158',
+    fechaNacimiento: '2000-07-08',
   };
 
-  // Modales
-  modalEdicionVisible  = false;
+  datosUsuario: any[] = [];
+
+  modalEdicionVisible = false;
   modalPasswordVisible = false;
 
-  // Formulario edición
-  formEdicion: any = {};
+  formEdicion: FormEdicion = this.getFormVacio();
 
-  // Formulario contraseña
   formPassword = { actual: '', nueva: '', confirmar: '' };
   erroresPassword: any = {};
 
-  constructor(private messageService: MessageService) {}
+  constructor(private router: Router, private messageService: MessageService) {}
 
-  // Tabla de datos derivada del objeto usuario
-  get datosUsuario() {
-    return [
-      { campo: 'Usuario',           valor: this.usuario.usuario,                          icon: 'pi pi-user' },
-      { campo: 'Nombre completo',   valor: this.usuario.nombreCompleto,                   icon: 'pi pi-id-card' },
-      { campo: 'Correo',            valor: this.usuario.email,                            icon: 'pi pi-envelope' },
-      { campo: 'Teléfono',          valor: this.usuario.telefono,                         icon: 'pi pi-phone' },
-      { campo: 'Dirección',         valor: this.usuario.direccion,                        icon: 'pi pi-map-marker' },
-      { campo: 'Fecha nacimiento',  valor: this.usuario.fechaNacimiento.toLocaleDateString('es-MX'), icon: 'pi pi-calendar' },
+  ngOnInit() {
+    this.refrescarTabla();
+  }
+
+  getFormVacio(): FormEdicion {
+    return {
+      nombreCompleto: this.usuario.nombreCompleto,
+      usuario:        this.usuario.usuario,
+      email:          this.usuario.email,
+      telefono:       this.usuario.telefono,
+      direccion:      this.usuario.direccion,
+      fechaNacimiento: null,
+    };
+  }
+
+  refrescarTabla() {
+    this.datosUsuario = [
+      { campo: 'Usuario',          valor: this.usuario.usuario,          icon: 'pi pi-user' },
+      { campo: 'Email',            valor: this.usuario.email,            icon: 'pi pi-envelope' },
+      { campo: 'Teléfono',         valor: this.usuario.telefono,         icon: 'pi pi-phone' },
+      { campo: 'Dirección',        valor: this.usuario.direccion,        icon: 'pi pi-map-marker' },
+      { campo: 'Fecha nacimiento', valor: this.usuario.fechaNacimiento,  icon: 'pi pi-calendar' },
     ];
   }
 
+  volver() {
+    this.router.navigate(['/grupo']);
+  }
+
+  cerrarSesion() {
+    localStorage.removeItem('usuarioActual');
+    this.router.navigate(['/login']);
+  }
+
   abrirEdicion() {
-    this.formEdicion = {
-      usuario:         this.usuario.usuario,
-      nombreCompleto:  this.usuario.nombreCompleto,
-      email:           this.usuario.email,
-      telefono:        this.usuario.telefono,
-      direccion:       this.usuario.direccion,
-      fechaNacimiento: this.usuario.fechaNacimiento
-    };
+    this.formEdicion = this.getFormVacio();
     this.modalEdicionVisible = true;
   }
 
   guardarEdicion() {
-    this.usuario = { ...this.usuario, ...this.formEdicion };
+    this.usuario.nombreCompleto = this.formEdicion.nombreCompleto;
+    this.usuario.usuario        = this.formEdicion.usuario;
+    this.usuario.email          = this.formEdicion.email;
+    this.usuario.telefono       = this.formEdicion.telefono;
+    this.usuario.direccion      = this.formEdicion.direccion;
+    this.refrescarTabla();
     this.modalEdicionVisible = false;
     this.messageService.add({ severity: 'success', summary: 'Guardado', detail: 'Perfil actualizado correctamente' });
   }
 
   abrirCambioPassword() {
-    this.formPassword    = { actual: '', nueva: '', confirmar: '' };
+    this.formPassword = { actual: '', nueva: '', confirmar: '' };
     this.erroresPassword = {};
     this.modalPasswordVisible = true;
   }
 
   guardarPassword() {
     this.erroresPassword = {};
-
-    if (!this.formPassword.actual) {
+    if (!this.formPassword.actual)
       this.erroresPassword.actual = 'Ingresa tu contraseña actual';
-    } else if (this.formPassword.actual !== this.usuario.password) {
-      this.erroresPassword.actual = 'La contraseña actual es incorrecta';
-    }
-
-    const regex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{10,}$/;
-    if (!this.formPassword.nueva) {
+    if (!this.formPassword.nueva)
       this.erroresPassword.nueva = 'Ingresa la nueva contraseña';
-    } else if (!regex.test(this.formPassword.nueva)) {
-      this.erroresPassword.nueva = 'Mínimo 10 caracteres, una mayúscula, un número y un símbolo';
-    }
-
-    if (this.formPassword.nueva !== this.formPassword.confirmar) {
+    if (this.formPassword.nueva !== this.formPassword.confirmar)
       this.erroresPassword.confirmar = 'Las contraseñas no coinciden';
-    }
-
     if (Object.keys(this.erroresPassword).length > 0) return;
 
-    this.usuario.password = this.formPassword.nueva;
     this.modalPasswordVisible = false;
     this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Contraseña cambiada correctamente' });
   }

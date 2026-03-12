@@ -1,0 +1,21 @@
+/* ── Toolbar ─────────────────────────────────────────────────────────── */
+:host ::ng-deep .navbar-toolbar.p-toolbar {
+  background-color: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+/* ── Título ──────────────────────────────────────────────────────────── */
+.navbar-titulo {
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+/* ── Avatar ──────────────────────────────────────────────────────────── */
+.navbar-avatar {
+  cursor: pointer;
+}
+
+:host ::ng-deep .navbar-avatar .p-avatar {
+  background-color: #bfdbfe;
+  color: #1d4ed8;
+}

@@ -1,0 +1,15 @@
+<!-- Sidebar -->
+<app-slidebar [(visible)]="sidebarVisible"></app-slidebar>
+
+<!-- Navbar -->
+<p-toolbar styleClass="navbar-toolbar">
+  <ng-template pTemplate="start">
+    <p-button icon="pi pi-bars" [text]="true" severity="secondary" (onClick)="sidebarVisible = true"></p-button>
+    <span class="navbar-titulo">{{ titulo }}</span>
+  </ng-template>
+
+  <ng-template pTemplate="end">
+    <p-avatar [label]="usuario.charAt(0).toUpperCase()" shape="circle" class="navbar-avatar" (click)="userMenu.toggle($event)"></p-avatar>
+    <p-menu #userMenu [model]="userMenuItems" [popup]="true"></p-menu>
+  </ng-template>
+</p-toolbar>

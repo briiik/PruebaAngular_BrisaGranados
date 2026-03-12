@@ -1,40 +1,72 @@
 <p-toast position="top-right"></p-toast>
 
 <div style="display:flex; justify-content:center; align-items:center; min-height:100vh;">
-  <p-card header="Inicio de Sesión" [style]="{ width: '100%', maxWidth: '400px' }">
+  <p-card [style]="{ width: '100%', maxWidth: '400px', textAlign: 'center' }">
+
+    <!-- Titulo -->
+    <ng-template pTemplate="header">
+      <h2 style="margin:0; text-align:center;">Inicio de Sesión</h2>
+    </ng-template>
 
     <!-- Error -->
-<p-message *ngIf="error" severity="error" text="Usuario o contraseña incorrectos" [style]="{ width: '100%', marginBottom: '1rem' }"></p-message>
+    <p-message *ngIf="error"
+      severity="error"
+      text="Usuario o contraseña incorrectos"
+      [style]="{ width: '100%', marginBottom: '1rem' }">
+    </p-message>
+
     <!-- Usuario -->
-    <div style="margin-bottom:1rem;">
-      <label for="usuario" style="display:block; margin-bottom:0.4rem; font-weight:600;">Usuario</label>
-      <p-iconfield>
-        <p-inputicon styleClass="pi pi-user"></p-inputicon>
-        <input pInputText id="usuario" [(ngModel)]="usuario" placeholder="Ingresa tu usuario" style="width:100%;" />
+    <div style="margin-bottom:1.5rem; text-align:center;">
+      <label for="usuario" style="display:block; margin-bottom:0.4rem; font-weight:300;">
+        Usuario
+      </label>
+
+      <p-iconfield style="width:100%; text-align:center;">
+        <input
+          pInputText
+          id="usuario"
+          [(ngModel)]="usuario"
+          placeholder="Ingresa tu usuario"
+          style="width:70%;" />
       </p-iconfield>
     </div>
 
     <!-- Contraseña -->
-    <div style="margin-bottom:1.5rem;">
-      <label for="password" style="display:block; margin-bottom:0.4rem; font-weight:600;">Contraseña</label>
+    <div style="margin-bottom:1.5rem; text-align:center;">
+      <label for="password" style="display:block; margin-bottom:0.4rem; font-weight:normal;">
+        Contraseña
+      </label>
+
       <p-password
         id="password"
         [(ngModel)]="password"
         placeholder="Ingresa tu contraseña"
         [toggleMask]="true"
         [feedback]="false"
-        style="width:100%;">
+        styleClass="w-full"
+        [inputStyle]="{ width: '100%' }">
       </p-password>
     </div>
 
     <!-- Botón -->
-    <p-button label="Iniciar Sesión" icon="pi pi-sign-in" styleClass="w-full" (onClick)="login()"></p-button>
+    <div style="display:flex; justify-content:center;">
+      <p-button
+        label="Iniciar Sesión"
+        icon="pi pi-sign-in"
+        styleClass="w-full"
+        (onClick)="login()">
+      </p-button>
+    </div>
 
     <p-divider></p-divider>
 
     <p style="text-align:center; margin:0;">
       ¿No tienes cuenta?
-      <a routerLink="/register" style="color:var(--primary-color); text-decoration:none; font-weight:600;">Regístrate</a>
+      <a
+        routerLink="/register"
+        style="color:var(--primary-color); text-decoration:none; font-weight:600;">
+        Regístrate
+      </a>
     </p>
 
   </p-card>

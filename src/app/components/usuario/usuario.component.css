@@ -1,0 +1,107 @@
+/* ── Layout ──────────────────────────────────────────────────────────── */
+.page-wrapper {
+  padding: 3rem 3rem;
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+}
+
+/* ── Card centrada estilo login ──────────────────────────────────────── */
+.card-centrada {
+  display: flex;
+  justify-content: center;
+}
+
+:host ::ng-deep .card-centrada .p-card {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid rgba(0, 0, 0, 0.30);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Header del perfil ───────────────────────────────────────────────── */
+.perfil-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1rem 0 1rem;
+}
+
+.perfil-nombre {
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Dividers ────────────────────────────────────────────────────────── */
+.divider-label {
+  font-weight: 600;
+}
+
+/* ── Tabla de info ───────────────────────────────────────────────────── */
+.tabla-campo {
+  font-weight: 600;
+  width: 40%;
+}
+
+.tabla-icon {
+  margin-right: 0.5rem;
+}
+
+:host ::ng-deep .p-datatable .p-datatable-tbody > tr {
+  background: #ffffff !important;
+}
+
+:host ::ng-deep .p-datatable .p-datatable-tbody > tr > td {
+  padding-left: 2rem;
+}
+
+/* ── Acciones ────────────────────────────────────────────────────────── */
+.acciones {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Formularios modales estilo login ────────────────────────────────── */
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-top: 0.5rem;
+}
+
+.form-campo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.form-label {
+  display: block;
+  font-weight: 300;
+  width: 100%;
+  text-align: center;
+}
+
+.form-input {
+  width: 80%;
+}
+
+:host ::ng-deep .form-input.p-password,
+:host ::ng-deep .form-input.p-password .p-inputtext {
+  width: 100%;
+}
+
+:host ::ng-deep .form-input.p-password {
+  width: 80%;
+}
+
+:host ::ng-deep .form-input.p-datepicker {
+  width: 80%;
+}

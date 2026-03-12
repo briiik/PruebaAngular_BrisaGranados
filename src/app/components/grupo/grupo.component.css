@@ -1,0 +1,165 @@
+/* ── Página ─────────────────────────────────────────────────────────── */
+.page-wrapper {
+  padding: 2rem 3rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+}
+
+.page-title {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.usuario-avatar {
+  cursor: pointer;
+}
+
+/* ── Modal formulario ────────────────────────────────────────────────── */
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-top: 0.5rem;
+}
+
+.form-campo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.form-label {
+  display: block;
+  font-weight: 300;
+  width: 100%;
+  text-align: center;
+}
+
+.form-field {
+  width: 80%;
+}
+
+.form-input {
+  width: 80%;
+}
+
+:host ::ng-deep .form-input.p-inputnumber,
+:host ::ng-deep .form-input.p-inputnumber .p-inputtext {
+  width: 100%;
+}
+
+:host ::ng-deep .form-input.p-select {
+  width: 80%;
+}
+
+:host ::ng-deep .form-input.p-inputnumber {
+  width: 80%;
+}
+
+/* ── Tarjetas de estadísticas ────────────────────────────────────────── */
+.stats-grid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+
+.stat-card-wrapper {
+  flex: 1;
+  min-width: 150px;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0 0 0.5rem 0;
+}
+
+/* Borde difuminado en tarjetas de estadísticas */
+:host ::ng-deep .stat-card.p-card {
+  border: 1px solid rgba(0, 0, 0, 0.30);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Título sección Grupos ───────────────────────────────────────────── */
+.grupos-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* ── Grid de tarjetas de grupos ──────────────────────────────────────── */
+.grupos-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.grupo-card-wrapper {
+  width: 300px;
+  cursor: pointer;
+}
+
+/* Borde difuminado en tarjetas de grupos */
+:host ::ng-deep .grupo-card.p-card {
+  border: 1px solid rgba(0, 0, 0, 0.30);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease;
+}
+
+:host ::ng-deep .grupo-card.p-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+:host ::ng-deep .grupo-card .p-card-title,
+:host ::ng-deep .grupo-card .p-card-subtitle {
+  text-align: center;
+}
+
+/* ── Contenido interno de cada tarjeta de grupo ──────────────────────── */
+.grupo-avatar-wrapper {
+  padding: 1rem 1rem 0 1rem;
+  display: flex;
+  justify-content: center;
+  margin-top: 5px;
+}
+
+.grupo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.grupo-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-icon {
+  color: #000;
+}
+
+.nivel-tag {
+  align-self: center;
+}
+
+.grupo-footer {
+  display: flex;
+  justify-content: center; /* centra horizontalmente */
+  align-items: center;     /* centra verticalmente */
+  gap: 0.5rem;             /* espacio entre botones */
+  margin-top: 15px;
+}

@@ -1,31 +1,25 @@
-<p-drawer 
-  [visible]="visible" 
+<p-drawer
+  [visible]="visible"
   (visibleChange)="onVisibleChange($event)"
   appendTo="body">
 
   <ng-template pTemplate="header">
-    <h3 style="margin: 0;">Hola</h3>
+    <h3 class="slidebar-title">¡Bienvenido!</h3>
   </ng-template>
 
   <ng-template pTemplate="content">
-
-    <!-- Espacio para imagen 
-     https://pbs.twimg.com/media/Fwh9G1aWcAEeQ5w.jpg-->
-    <div style="display: flex; justify-content: center; margin-bottom: 1rem;">
-      <img 
-        src="	https://storage.waifuwall.com/preview/1038.webp" 
-        alt="Logo" 
-        style="max-width: 100%; max-height: 120px; border-radius: 8px; object-fit: contain;" />
+    <div class="slidebar-img-wrapper">
+      <img
+        src="https://storage.waifuwall.com/preview/1038.webp"
+        alt="Logo"
+        class="slidebar-img" />
     </div>
 
     <p-menu [model]="menuItems"></p-menu>
-
   </ng-template>
 
   <ng-template pTemplate="footer">
-    <p style="text-align: center; color: var(--text-color-secondary); font-size: 0.75rem; margin: 0;">
-      Version 5.1
-    </p>
+    <p class="slidebar-version">Version 6.0</p>
   </ng-template>
 
 </p-drawer>
