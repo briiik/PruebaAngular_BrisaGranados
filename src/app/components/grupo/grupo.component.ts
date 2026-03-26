@@ -4,24 +4,23 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
-import { CardModule } from 'primeng/card';
-import { TagModule } from 'primeng/tag';
-import { DividerModule } from 'primeng/divider';
-import { ToastModule } from 'primeng/toast';
-import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
-import { InputTextModule } from 'primeng/inputtext';
+import { CardModule }        from 'primeng/card';
+import { TagModule }         from 'primeng/tag';
+import { DividerModule }     from 'primeng/divider';
+import { ToastModule }       from 'primeng/toast';
+import { ButtonModule }      from 'primeng/button';
+import { DialogModule }      from 'primeng/dialog';
+import { InputTextModule }   from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
-import { TextareaModule } from 'primeng/textarea';
+import { TextareaModule }    from 'primeng/textarea';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { TooltipModule } from 'primeng/tooltip';
-import { AvatarModule } from 'primeng/avatar';
-import { MessageModule } from 'primeng/message';
-import { SelectModule } from 'primeng/select';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
+import { TooltipModule }     from 'primeng/tooltip';
+import { AvatarModule }      from 'primeng/avatar';
+import { MessageModule }     from 'primeng/message';
+import { SelectModule }      from 'primeng/select';
 
 import { NavbarComponent } from '../navbar/navbar.component';
+import { SharedDataService } from '../shared/shared-data.service'; // 👈
 
 export interface Grupo {
   id: number;
@@ -37,23 +36,11 @@ export interface Grupo {
   selector: 'app-grupo',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    CardModule,
-    TagModule,
-    DividerModule,
-    ToastModule,
-    ButtonModule,
-    DialogModule,
-    InputTextModule,
-    InputNumberModule,
-    TextareaModule,
-    ConfirmDialogModule,
-    TooltipModule,
-    AvatarModule,
-    MessageModule,
-    SelectModule,
-    NavbarComponent,
+    CommonModule, FormsModule,
+    CardModule, TagModule, DividerModule, ToastModule,
+    ButtonModule, DialogModule, InputTextModule, InputNumberModule,
+    TextareaModule, ConfirmDialogModule, TooltipModule, AvatarModule,
+    MessageModule, SelectModule, NavbarComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './grupo.component.html',
@@ -74,17 +61,17 @@ export class GrupoComponent implements OnInit {
 
   avatarColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 
-  modalVisible = false;
-  modoEdicion = false;
+  modalVisible    = false;
+  modoEdicion     = false;
   grupoEditandoId: number | null = null;
-  errores: any = {};
-
-  form = this.formVacio();
+  errores: any    = {};
+  form            = this.formVacio();
 
   constructor(
     private messageService: MessageService,
     private confirmationService: ConfirmationService,
-    private router: Router
+    private router: Router,
+    public shared: SharedDataService, // 👈
   ) {}
 
   ngOnInit() {
@@ -105,9 +92,7 @@ export class GrupoComponent implements OnInit {
 
   getNivelSeverity(nivel: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
     const map: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary'> = {
-      'Básico':     'info',
-      'Intermedio': 'warn',
-      'Avanzado':   'success',
+      'Básico': 'info', 'Intermedio': 'warn', 'Avanzado': 'success',
     };
     return map[nivel] ?? 'secondary';
   }
@@ -118,8 +103,8 @@ export class GrupoComponent implements OnInit {
 
   abrirModal() {
     this.modoEdicion = false;
-    this.form = this.formVacio();
-    this.errores = {};
+    this.form        = this.formVacio();
+    this.errores     = {};
     this.modalVisible = true;
   }
 
@@ -129,16 +114,16 @@ export class GrupoComponent implements OnInit {
   }
 
   editar(grupo: Grupo) {
-    this.modoEdicion = true;
+    this.modoEdicion     = true;
     this.grupoEditandoId = grupo.id;
-    this.form = { ...grupo };
-    this.errores = {};
-    this.modalVisible = true;
+    this.form            = { ...grupo };
+    this.errores         = {};
+    this.modalVisible    = true;
   }
 
   cerrarModal() {
     this.modalVisible = false;
-    this.errores = {};
+    this.errores      = {};
   }
 
   validar(): boolean {
@@ -166,7 +151,6 @@ export class GrupoComponent implements OnInit {
       this.grupos = [...this.grupos, { id: nuevoId, ...this.form } as Grupo];
       this.messageService.add({ severity: 'success', summary: 'Agregado', detail: 'Grupo agregado correctamente' });
     }
-
     this.cerrarModal();
   }
 
@@ -178,10 +162,8 @@ export class GrupoComponent implements OnInit {
   confirmarEliminar(grupo: Grupo) {
     this.confirmationService.confirm({
       message: `¿Estás seguro de eliminar el grupo <b>${grupo.nombre}</b>?`,
-      header: 'Confirmar eliminación',
-      icon: 'pi pi-trash',
-      acceptLabel: 'Eliminar',
-      rejectLabel: 'Cancelar',
+      header: 'Confirmar eliminación', icon: 'pi pi-trash',
+      acceptLabel: 'Eliminar', rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.grupos = this.grupos.filter(g => g.id !== grupo.id);

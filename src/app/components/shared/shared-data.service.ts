@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { group } from '@primeng/themes/aura/avatar';
 
 // ── Permisos disponibles en el sistema ────────────────────────────────────────
 export const TODOS_LOS_PERMISOS = [
@@ -36,14 +35,14 @@ export class SharedDataService {
     {
       id: 1, nombre: 'Brisa', email: 'brisa@mail.com', activo: true,
       fechaCreacion: '2025-01-01',
-      permisos: ['ticket:view','ticket:create','ticket:edit','ticket:delete','ticket:assign',
+      permisos: ['ticket:view','ticket:edit','ticket:delete','ticket:assign', 'ticket:create',
                  'group:view','group:edit','group:add','group:delete','admin:users','admin:perms'],
     },
     {
       id: 2, nombre: 'Jonathan', email: 'jonathan@mail.com', activo: true,
       fechaCreacion: '2025-01-03',
-      permisos: ['ticket:view','ticket:create','ticket:edit','ticket:assign','group:view', 'admin:users','admin:perms',
-        'group:add', 'group:edit'
+      permisos: ['ticket:view','ticket:create','ticket:edit','ticket:assign','group:view',
+        //'group:edit','group:add'
       ],
     },
     {

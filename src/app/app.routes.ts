@@ -8,16 +8,35 @@ import { UsuarioComponent } from './components/usuario/usuario.component';
 import { GrupoDashboardComponent } from './components/grupo-dashboard/grupo-dashboard.component';
 import { GestionGrupoComponent } from './components/gestion-grupo/gestion-grupo.component';
 import { SuperadminComponent } from './components/superadmin/superadmin.component';
+import { AccesoDenegadoComponent } from './components/acceso-denegado/acceso-denegado.component'; // 👈
+import { permGuard } from './components/shared/auth.guard'; // 👈
 
 export const routes: Routes = [
-    { path: '',                      component: HomeComponent },
-    { path: 'login',                 component: LoginComponent },
-    { path: 'register',              component: RegisterComponent },
-    { path: 'principal',             component: PrincipalComponent },
-    { path: 'grupo',                 component: GrupoComponent },
-    { path: 'grupo-dashboard/:id',   component: GrupoDashboardComponent },
-    { path: 'usuario',               component: UsuarioComponent },
-    { path: 'gestion-grupo/:id',     component: GestionGrupoComponent },
-    { path: 'superadmin',            component: SuperadminComponent },
-    { path: '**',                    redirectTo: '' }
+  { path: '',         component: HomeComponent },
+  { path: 'login',    component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
+  { path: 'principal', component: PrincipalComponent },
+
+  { path: 'grupo',
+  component: GrupoComponent },
+
+  { path: 'grupo-dashboard/:id',
+    component: GrupoDashboardComponent,
+    canActivate: [permGuard('group:view')] },
+
+  { path: 'gestion-grupo/:id',
+    component: GestionGrupoComponent,
+    canActivate: [permGuard('group:view')] },
+
+  { path: 'usuario',
+    component: UsuarioComponent },
+
+  { path: 'superadmin',
+    component: SuperadminComponent,
+    canActivate: [permGuard('admin:users')] },
+
+  { path: 'acceso-denegado',
+    component: AccesoDenegadoComponent }, // 👈
+
+  { path: '**', redirectTo: '' }
 ];

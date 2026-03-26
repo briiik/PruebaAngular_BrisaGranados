@@ -8,6 +8,7 @@ import { AvatarModule } from 'primeng/avatar';
 import { MenuModule } from 'primeng/menu';
 import { ToastModule } from 'primeng/toast';
 import { SlidebarComponent } from '../slidebar/slidebar.component';
+import { SharedDataService } from '../shared/shared-data.service'; // 👈 agregar
 
 @Component({
   selector: 'app-navbar',
@@ -32,7 +33,7 @@ export class NavbarComponent {
   sidebarVisible = false;
 
   get usuario(): string {
-    return localStorage.getItem('usuarioActual') || 'Usuario';
+    return this.shared.usuarioActivoNombre; // 👈 cambiar esto también
   }
 
   userMenuItems: MenuItem[] = [
@@ -41,7 +42,10 @@ export class NavbarComponent {
     { label: 'Cerrar Sesión', icon: 'pi pi-sign-out', command: () => this.cerrarSesion() }
   ];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    public shared: SharedDataService, // 👈 agregar
+  ) {}
 
   cerrarSesion() {
     localStorage.removeItem('usuarioActual');

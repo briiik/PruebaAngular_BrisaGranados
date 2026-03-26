@@ -1,0 +1,34 @@
+<div class="page-header">
+  <h2 class="page-title">¡Bienvenido!</h2>
+  <div style="display:flex; align-items:center; gap:0.75rem;">
+
+    <!-- Selector usuario demo -->
+    <span style="font-size:0.85rem; color:#666;">Usuario activo:</span>
+    <p-select
+      [(ngModel)]="shared.usuarioActivoNombre"
+      [options]="shared.usuarios"
+      optionLabel="nombre"
+      optionValue="nombre"
+      style="width:160px;">
+    </p-select>
+
+    <p-button
+      *ngIf="shared.tienePerm('group:add')"
+      label="Agregar Grupo"
+      icon="pi pi-plus"
+      (onClick)="abrirModal()">
+    </p-button>
+  </div>
+</div>
+```
+
+---
+
+Con esto el flujo completo queda así:
+```
+Usuario selecciona "Ana" en el selector de /grupos
+        │
+        ├── Ana tiene group:view → puede ver /grupos ✅
+        ├── Ana NO tiene group:edit → no ve botón Gestionar grupo ✅  
+        ├── Ana intenta ir a /gestion-grupo → guard la bloquea → /acceso-denegado ✅
+        └── Ana NO tiene admin:users → no ve Superadmin en slidebar ✅

@@ -22,13 +22,20 @@
         <p-tag [value]="'Autor: ' + grupo?.autor" severity="secondary"></p-tag>
       </div>
     </div>
+
+    <!-- Selector usuario demo -->
     <div class="usuario-demo-selector">
       <span class="usuario-demo-label">Usuario activo (demo):</span>
-      <p-select [(ngModel)]="usuarioActivo" [options]="usuariosDemo" optionLabel="nombre" optionValue="nombre"
-        placeholder="Cambiar usuario" style="width: 200px;">
+      <p-select
+        [(ngModel)]="shared.usuarioActivoNombre"
+        [options]="shared.usuarios"
+        optionLabel="nombre"
+        optionValue="nombre"
+        placeholder="Cambiar usuario"
+        style="width: 200px;">
       </p-select>
-      <p-tag [value]="'Permiso: ' + (tienePermisoCreador ? 'Creador' : 'Asignado/Lector')"
-        [severity]="tienePermisoCreador ? 'info' : 'secondary'">
+      <p-tag
+        [pTooltip]="'Permisos: ' + (shared.usuarioActivo.permisos?.length ?? 0)"        severity="info">
       </p-tag>
     </div>
   </div>
@@ -104,176 +111,204 @@
     <span class="seccion-label">Tickets del grupo</span>
   </p-divider>
 
-  <!-- Toolbar -->
-  <p-toolbar styleClass="mb-3">
-    <ng-template pTemplate="start">
-      <div class="toolbar-vista">
-        <span class="font-semibold">Vista:</span>
-        <p-selectButton [(ngModel)]="vistaActual" [options]="vistaOptions" optionLabel="label" optionValue="value"></p-selectButton>
-      </div>
-    </ng-template>
-    <ng-template pTemplate="center">
-      <div class="toolbar-filtros">
-        <p-select [(ngModel)]="filtroEstado" [options]="estadoOptions" optionLabel="label" optionValue="value"
-          placeholder="Filtrar estado" [showClear]="true" (onChange)="aplicarFiltros()" style="min-width: 150px;">
-        </p-select>
-        <p-select [(ngModel)]="filtroPrioridad" [options]="prioridadOptions" optionLabel="label" optionValue="value"
-          placeholder="Filtrar prioridad" [showClear]="true" (onChange)="aplicarFiltros()" style="min-width: 150px;">
-        </p-select>
-      </div>
-    </ng-template>
-    <ng-template pTemplate="end">
-      <div class="toolbar-acciones">
-        <p-button
-          *ngIf="tienePermisoCreador"
-          label="Gestionar grupo"
-          icon="pi pi-cog"
-          severity="warn"
-          pTooltip="Miembros y configuración del grupo"
-          (onClick)="irAGestion()">
-        </p-button>
-        <p-button label="Nuevo Ticket" icon="pi pi-plus" severity="success" (onClick)="abrirModalNuevoTicket()"></p-button>
-      </div>
-    </ng-template>
-  </p-toolbar>
+  <!-- Mensaje si no tiene ticket:view -->
+  <p-message
+    *ngIf="!shared.tienePerm('ticket:view')"
+    severity="warn"
+    text="No tienes permisos para ver los tickets de este grupo."
+    styleClass="w-full">
+  </p-message>
 
-  <!-- ======= VISTA TABLA ======= -->
-  <div *ngIf="vistaActual === 'tabla'">
-    <p-table
-      [value]="ticketsFiltrados"
-      [paginator]="true"
-      [rows]="8"
-      [rowsPerPageOptions]="[5,8,15,30]"
-      [sortMode]="'multiple'"
-      styleClass="p-datatable-sm p-datatable-gridlines"
-      [globalFilterFields]="['titulo','asignadoA','estado','prioridad']"
-      #dt>
+  <!-- Todo lo de tickets envuelto en el permiso -->
+  <div *ngIf="shared.tienePerm('ticket:view')">
 
-      <ng-template pTemplate="caption">
-        <div class="tabla-caption">
-          <span class="p-input-icon-left">
-            <i class="pi pi-search"></i>
-            <input pInputText type="text" (input)="dt.filterGlobal($any($event.target).value, 'contains')" placeholder="Buscar..." />
-          </span>
+    <!-- Toolbar -->
+    <p-toolbar styleClass="mb-3">
+      <ng-template pTemplate="start">
+        <div class="toolbar-vista">
+          <span class="font-semibold">Vista:</span>
+          <p-selectButton [(ngModel)]="vistaActual" [options]="vistaOptions" optionLabel="label" optionValue="value"></p-selectButton>
         </div>
       </ng-template>
-
-      <ng-template pTemplate="header">
-        <tr>
-          <th pSortableColumn="titulo" style="min-width:160px;">Título <p-sortIcon field="titulo"></p-sortIcon></th>
-          <th style="min-width:200px;">Descripción</th>
-          <th pSortableColumn="estado" style="min-width:140px;">
-            Estado <p-sortIcon field="estado"></p-sortIcon>
-            <p-columnFilter field="estado" matchMode="equals" display="menu">
-              <ng-template pTemplate="filter" let-value let-filter="filterCallback">
-                <p-select [ngModel]="value" (ngModelChange)="filter($event)"
-                  [options]="estadoOptions" optionLabel="label" optionValue="value"
-                  placeholder="Todos" [showClear]="true" style="width:100%;">
-                </p-select>
-              </ng-template>
-            </p-columnFilter>
-          </th>
-          <th pSortableColumn="asignadoA" style="min-width:130px;">Asignado <p-sortIcon field="asignadoA"></p-sortIcon></th>
-          <th pSortableColumn="prioridad" style="min-width:120px;">
-            Prioridad <p-sortIcon field="prioridad"></p-sortIcon>
-            <p-columnFilter field="prioridad" matchMode="equals" display="menu">
-              <ng-template pTemplate="filter" let-value let-filter="filterCallback">
-                <p-select [ngModel]="value" (ngModelChange)="filter($event)"
-                  [options]="prioridadOptions" optionLabel="label" optionValue="value"
-                  placeholder="Todas" [showClear]="true" style="width:100%;">
-                </p-select>
-              </ng-template>
-            </p-columnFilter>
-          </th>
-          <th pSortableColumn="fechaCreacion" style="min-width:120px;">Creación <p-sortIcon field="fechaCreacion"></p-sortIcon></th>
-          <th pSortableColumn="fechaLimite" style="min-width:120px;">Límite <p-sortIcon field="fechaLimite"></p-sortIcon></th>
-          <th style="min-width:110px;">Acciones</th>
-        </tr>
+      <ng-template pTemplate="center">
+        <div class="toolbar-filtros">
+          <p-select [(ngModel)]="filtroEstado" [options]="estadoOptions" optionLabel="label" optionValue="value"
+            placeholder="Filtrar estado" [showClear]="true" (onChange)="aplicarFiltros()" style="min-width: 150px;">
+          </p-select>
+          <p-select [(ngModel)]="filtroPrioridad" [options]="prioridadOptions" optionLabel="label" optionValue="value"
+            placeholder="Filtrar prioridad" [showClear]="true" (onChange)="aplicarFiltros()" style="min-width: 150px;">
+          </p-select>
+        </div>
       </ng-template>
+      <ng-template pTemplate="end">
+        <div class="toolbar-acciones">
+          <p-button
+            *ngIf="shared.tienePerm('group:edit')"
+            label="Gestionar grupo"
+            icon="pi pi-cog"
+            severity="warn"
+            pTooltip="Miembros y configuración del grupo"
+            (onClick)="irAGestion()">
+          </p-button>
+          <p-button
+            *ngIf="shared.tienePerm('ticket:create')"
+            label="Nuevo Ticket"
+            icon="pi pi-plus"
+            severity="success"
+            (onClick)="abrirModalNuevoTicket()">
+          </p-button>
+        </div>
+      </ng-template>
+    </p-toolbar>
 
-      <ng-template pTemplate="body" let-ticket>
-        <tr>
-          <td>
-            <span class="ticket-link" (click)="abrirModalDetalle(ticket)">{{ ticket.titulo }}</span>
-          </td>
-          <td>
-            <span pTooltip="{{ ticket.descripcion }}" tooltipPosition="top" class="descripcion-truncada">
-              {{ ticket.descripcion }}
+    <!-- ======= VISTA TABLA ======= -->
+    <div *ngIf="vistaActual === 'tabla'">
+      <p-table
+        [value]="ticketsFiltrados"
+        [paginator]="true"
+        [rows]="8"
+        [rowsPerPageOptions]="[5,8,15,30]"
+        [sortMode]="'multiple'"
+        styleClass="p-datatable-sm p-datatable-gridlines"
+        [globalFilterFields]="['titulo','asignadoA','estado','prioridad']"
+        #dt>
+
+        <ng-template pTemplate="caption">
+          <div class="tabla-caption">
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input pInputText type="text"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                placeholder="Buscar..." />
             </span>
-          </td>
-          <td><p-tag [value]="ticket.estado" [severity]="getEstadoSeverity(ticket.estado)"></p-tag></td>
-          <td>
-            <div class="asignado-cell">
-              <p-avatar [label]="ticket.asignadoA.charAt(0)" shape="circle" size="normal"></p-avatar>
-              {{ ticket.asignadoA }}
-            </div>
-          </td>
-          <td><p-tag [value]="ticket.prioridad" [severity]="getPrioridadSeverity(ticket.prioridad)"></p-tag></td>
-          <td>{{ ticket.fechaCreacion }}</td>
-          <td>
-            <span [class.fecha-vencida]="esVencido(ticket.fechaLimite)">
-              {{ ticket.fechaLimite }}
-              <i *ngIf="esVencido(ticket.fechaLimite)" class="pi pi-exclamation-triangle ml-1"></i>
-            </span>
-          </td>
-          <td>
-            <p-button icon="pi pi-eye" severity="info" pTooltip="Ver" (onClick)="abrirModalDetalle(ticket)"></p-button>
-            <p-button icon="pi pi-trash" severity="danger" pTooltip="Eliminar"
-              [disabled]="!tienePermisoCreador" (onClick)="confirmarEliminar(ticket)" class="ml-1">
-            </p-button>
-          </td>
-        </tr>
-      </ng-template>
-
-      <ng-template pTemplate="emptymessage">
-        <tr><td colspan="8" class="text-center">No hay tickets que coincidan con los filtros.</td></tr>
-      </ng-template>
-    </p-table>
-  </div>
-
-  <!-- ======= VISTA KANBAN ======= -->
-  <div *ngIf="vistaActual === 'kanban'" class="kanban-board">
-    <div *ngFor="let columna of kanbanColumnas" class="kanban-col"
-      (dragover)="onDragOver($event)"
-      (drop)="onDrop($event, columna.estado)">
-
-      <div class="kanban-col-header">
-        <p-tag [value]="columna.estado" [severity]="getEstadoSeverity(columna.estado)"></p-tag>
-        <p-badge [value]="getTicketsPorEstado(columna.estado).length.toString()" severity="secondary"></p-badge>
-      </div>
-
-      <div *ngFor="let ticket of getTicketsPorEstado(columna.estado)"
-        class="kanban-ticket-card"
-        draggable="true"
-        (dragstart)="onDragStart($event, ticket)"
-        (click)="abrirModalDetalle(ticket)">
-        <p-card styleClass="kanban-card-inner">
-          <div class="kanban-ticket-body">
-            <div class="kanban-ticket-top">
-              <p-tag [value]="ticket.prioridad" [severity]="getPrioridadSeverity(ticket.prioridad)"></p-tag>
-              <i class="pi pi-arrows-alt text-color-secondary" pTooltip="Arrastrar"></i>
-            </div>
-            <p class="kanban-ticket-title">{{ ticket.titulo }}</p>
-            <div class="kanban-ticket-footer">
-              <div class="kanban-asignado">
-                <p-avatar [label]="ticket.asignadoA.charAt(0)" shape="circle" size="normal"></p-avatar>
-                <span class="kanban-asignado-nombre">{{ ticket.asignadoA }}</span>
-              </div>
-              <span class="kanban-fecha">
-                <i class="pi pi-calendar"></i> {{ ticket.fechaLimite }}
-              </span>
-            </div>
-            <p-tag [value]="ticket.estado" [severity]="getEstadoSeverity(ticket.estado)" class="kanban-estado-tag"></p-tag>
           </div>
-        </p-card>
-      </div>
+        </ng-template>
 
-      <div *ngIf="getTicketsPorEstado(columna.estado).length === 0" class="kanban-empty">
-        <i class="pi pi-inbox kanban-empty-icon"></i>
-        <p class="kanban-empty-text">Sin tickets</p>
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="titulo" style="min-width:160px;">Título <p-sortIcon field="titulo"></p-sortIcon></th>
+            <th style="min-width:200px;">Descripción</th>
+            <th pSortableColumn="estado" style="min-width:140px;">
+              Estado <p-sortIcon field="estado"></p-sortIcon>
+              <p-columnFilter field="estado" matchMode="equals" display="menu">
+                <ng-template pTemplate="filter" let-value let-filter="filterCallback">
+                  <p-select [ngModel]="value" (ngModelChange)="filter($event)"
+                    [options]="estadoOptions" optionLabel="label" optionValue="value"
+                    placeholder="Todos" [showClear]="true" style="width:100%;">
+                  </p-select>
+                </ng-template>
+              </p-columnFilter>
+            </th>
+            <th pSortableColumn="asignadoA" style="min-width:130px;">Asignado <p-sortIcon field="asignadoA"></p-sortIcon></th>
+            <th pSortableColumn="prioridad" style="min-width:120px;">
+              Prioridad <p-sortIcon field="prioridad"></p-sortIcon>
+              <p-columnFilter field="prioridad" matchMode="equals" display="menu">
+                <ng-template pTemplate="filter" let-value let-filter="filterCallback">
+                  <p-select [ngModel]="value" (ngModelChange)="filter($event)"
+                    [options]="prioridadOptions" optionLabel="label" optionValue="value"
+                    placeholder="Todas" [showClear]="true" style="width:100%;">
+                  </p-select>
+                </ng-template>
+              </p-columnFilter>
+            </th>
+            <th pSortableColumn="fechaCreacion" style="min-width:120px;">Creación <p-sortIcon field="fechaCreacion"></p-sortIcon></th>
+            <th pSortableColumn="fechaLimite" style="min-width:120px;">Límite <p-sortIcon field="fechaLimite"></p-sortIcon></th>
+            <th style="min-width:110px;">Acciones</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-ticket>
+          <tr>
+            <td>
+              <span class="ticket-link" (click)="abrirModalDetalle(ticket)">{{ ticket.titulo }}</span>
+            </td>
+            <td>
+              <span pTooltip="{{ ticket.descripcion }}" tooltipPosition="top" class="descripcion-truncada">
+                {{ ticket.descripcion }}
+              </span>
+            </td>
+            <td><p-tag [value]="ticket.estado" [severity]="getEstadoSeverity(ticket.estado)"></p-tag></td>
+            <td>
+              <div class="asignado-cell">
+                <p-avatar [label]="ticket.asignadoA.charAt(0)" shape="circle" size="normal"></p-avatar>
+                {{ ticket.asignadoA }}
+              </div>
+            </td>
+            <td><p-tag [value]="ticket.prioridad" [severity]="getPrioridadSeverity(ticket.prioridad)"></p-tag></td>
+            <td>{{ ticket.fechaCreacion }}</td>
+            <td>
+              <span [class.fecha-vencida]="esVencido(ticket.fechaLimite)">
+                {{ ticket.fechaLimite }}
+                <i *ngIf="esVencido(ticket.fechaLimite)" class="pi pi-exclamation-triangle ml-1"></i>
+              </span>
+            </td>
+            <td>
+              <div class="acciones-cell">
+                <p-button icon="pi pi-eye" severity="info" pTooltip="Ver"
+                  (onClick)="abrirModalDetalle(ticket)">
+                </p-button>
+                <p-button
+                  *ngIf="shared.tienePerm('ticket:delete')"
+                  icon="pi pi-trash" severity="danger" pTooltip="Eliminar"
+                  (onClick)="confirmarEliminar(ticket)" class="ml-1">
+                </p-button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr><td colspan="8" class="text-center">No hay tickets que coincidan con los filtros.</td></tr>
+        </ng-template>
+      </p-table>
+    </div>
+
+    <!-- ======= VISTA KANBAN ======= -->
+    <div *ngIf="vistaActual === 'kanban'" class="kanban-board">
+      <div *ngFor="let columna of kanbanColumnas" class="kanban-col"
+        (dragover)="onDragOver($event)"
+        (drop)="onDrop($event, columna.estado)">
+
+        <div class="kanban-col-header">
+          <p-tag [value]="columna.estado" [severity]="getEstadoSeverity(columna.estado)"></p-tag>
+          <p-badge [value]="getTicketsPorEstado(columna.estado).length.toString()" severity="secondary"></p-badge>
+        </div>
+
+        <div *ngFor="let ticket of getTicketsPorEstado(columna.estado)"
+          class="kanban-ticket-card"
+          draggable="true"
+          (dragstart)="onDragStart($event, ticket)"
+          (click)="abrirModalDetalle(ticket)">
+          <p-card styleClass="kanban-card-inner">
+            <div class="kanban-ticket-body">
+              <div class="kanban-ticket-top">
+                <p-tag [value]="ticket.prioridad" [severity]="getPrioridadSeverity(ticket.prioridad)"></p-tag>
+                <i class="pi pi-arrows-alt text-color-secondary" pTooltip="Arrastrar"></i>
+              </div>
+              <p class="kanban-ticket-title">{{ ticket.titulo }}</p>
+              <div class="kanban-ticket-footer">
+                <div class="kanban-asignado">
+                  <p-avatar [label]="ticket.asignadoA.charAt(0)" shape="circle" size="normal"></p-avatar>
+                  <span class="kanban-asignado-nombre">{{ ticket.asignadoA }}</span>
+                </div>
+                <span class="kanban-fecha">
+                  <i class="pi pi-calendar"></i> {{ ticket.fechaLimite }}
+                </span>
+              </div>
+              <p-tag [value]="ticket.estado" [severity]="getEstadoSeverity(ticket.estado)" class="kanban-estado-tag"></p-tag>
+            </div>
+          </p-card>
+        </div>
+
+        <div *ngIf="getTicketsPorEstado(columna.estado).length === 0" class="kanban-empty">
+          <i class="pi pi-inbox kanban-empty-icon"></i>
+          <p class="kanban-empty-text">Sin tickets</p>
+        </div>
       </div>
     </div>
+
   </div>
+  <!-- fin *ngIf ticket:view -->
 
 </div>
 
@@ -307,7 +342,8 @@
         <div class="modal-form">
           <div class="form-campo">
             <label class="form-label">Título *</label>
-            <input pInputText [(ngModel)]="formEdicion.titulo" class="form-input" [disabled]="!puedeEditarCampo('titulo')" />
+            <input pInputText [(ngModel)]="formEdicion.titulo" class="form-input"
+              [disabled]="!puedeEditarCampo('titulo')" />
           </div>
           <div class="form-campo">
             <label class="form-label">Descripción</label>
@@ -341,23 +377,33 @@
             <div class="form-campo">
               <label class="form-label">Fecha límite</label>
               <p-datepicker [(ngModel)]="formEdicion.fechaLimiteDate" dateFormat="yy-mm-dd"
-                styleClass="form-input" [disabled]="!puedeEditarCampo('fechaLimite')" [showIcon]="true" appendTo="body">
+                styleClass="form-input" [disabled]="!puedeEditarCampo('fechaLimite')"
+                [showIcon]="true" appendTo="body">
               </p-datepicker>
             </div>
           </div>
+
           <p-panel header="Información del ticket" [toggleable]="true" [collapsed]="true">
             <div class="ticket-info-grid">
               <div><strong>Creado por:</strong> {{ ticketSeleccionado?.creadoPor }}</div>
               <div><strong>Fecha creación:</strong> {{ ticketSeleccionado?.fechaCreacion }}</div>
             </div>
           </p-panel>
+
           <p-message
-            [severity]="tienePermisoCreador ? 'info' : (ticketSeleccionado && esAsignado(ticketSeleccionado) ? 'warn' : 'secondary')"
-            [text]="tienePermisoCreador
-              ? 'Eres el creador: tienes acceso completo.'
-              : (ticketSeleccionado && esAsignado(ticketSeleccionado)
-                  ? 'Eres el asignado: puedes cambiar el estado y comentar.'
-                  : 'Modo solo lectura.')">
+            *ngIf="shared.tienePerm('ticket:edit')"
+            severity="info"
+            text="Tienes acceso completo para editar este ticket.">
+          </p-message>
+          <p-message
+            *ngIf="!shared.tienePerm('ticket:edit') && ticketSeleccionado && esAsignado(ticketSeleccionado)"
+            severity="warn"
+            text="Eres el asignado: solo puedes cambiar el estado y comentar.">
+          </p-message>
+          <p-message
+            *ngIf="!shared.tienePerm('ticket:edit') && ticketSeleccionado && !esAsignado(ticketSeleccionado)"
+            severity="secondary"
+            text="Modo solo lectura. No tienes permisos para editar este ticket.">
           </p-message>
         </div>
       </p-tabpanel>
@@ -385,14 +431,17 @@
           <div *ngIf="ticketSeleccionado && puedeComentarEnTicket(ticketSeleccionado)">
             <div class="form-campo">
               <label class="form-label">Nuevo comentario</label>
-              <textarea pTextarea [(ngModel)]="nuevoComentario" rows="3" class="form-input" placeholder="Escribe un comentario..."></textarea>
+              <textarea pTextarea [(ngModel)]="nuevoComentario" rows="3" class="form-input"
+                placeholder="Escribe un comentario..."></textarea>
             </div>
             <div class="comentario-enviar">
               <p-button label="Enviar" icon="pi pi-send" (onClick)="agregarComentario()"></p-button>
             </div>
           </div>
-          <p-message *ngIf="ticketSeleccionado && !puedeComentarEnTicket(ticketSeleccionado)"
-            severity="secondary" text="No tienes permisos para comentar en este ticket.">
+          <p-message
+            *ngIf="ticketSeleccionado && !puedeComentarEnTicket(ticketSeleccionado)"
+            severity="secondary"
+            text="No tienes permisos para comentar en este ticket.">
           </p-message>
         </div>
       </p-tabpanel>
@@ -427,7 +476,9 @@
 
   <ng-template pTemplate="footer">
     <p-button label="Cerrar" icon="pi pi-times" severity="danger" (onClick)="cerrarModalDetalle()"></p-button>
-    <p-button label="Guardar cambios" icon="pi pi-check" (onClick)="guardarEdicion()" [disabled]="!puedeEditarAlgo()"></p-button>
+    <p-button label="Guardar cambios" icon="pi pi-check"
+      (onClick)="guardarEdicion()" [disabled]="!puedeEditarAlgo()">
+    </p-button>
   </ng-template>
 </p-dialog>
 
@@ -443,7 +494,8 @@
     </div>
     <div class="form-campo">
       <label class="form-label">Descripción</label>
-      <textarea pTextarea [(ngModel)]="formNuevo.descripcion" rows="3" class="form-input" placeholder="Descripción detallada del ticket..."></textarea>
+      <textarea pTextarea [(ngModel)]="formNuevo.descripcion" rows="3" class="form-input"
+        placeholder="Descripción detallada del ticket..."></textarea>
     </div>
     <div class="form-doble">
       <div class="form-campo">
@@ -460,13 +512,16 @@
       </div>
     </div>
     <div class="form-doble">
-      <div class="form-campo">
+
+      <!-- Solo aparece si tiene ticket:assign -->
+      <div class="form-campo" *ngIf="shared.tienePerm('ticket:assign')">
         <label class="form-label">Asignar a</label>
         <p-select [(ngModel)]="formNuevo.asignadoA" [options]="integrantes"
           optionLabel="nombre" optionValue="nombre" placeholder="Selecciona integrante"
           styleClass="form-input" [showClear]="true" appendTo="body">
         </p-select>
       </div>
+
       <div class="form-campo">
         <label class="form-label">Fecha límite</label>
         <p-datepicker [(ngModel)]="formNuevo.fechaLimiteDate" dateFormat="yy-mm-dd"
@@ -477,8 +532,12 @@
   </div>
 
   <ng-template pTemplate="footer">
-    <p-button label="Cancelar" icon="pi pi-times" severity="danger" (onClick)="modalNuevoVisible = false"></p-button>
-    <p-button label="Crear ticket" icon="pi pi-check" severity="success" (onClick)="crearTicket()"></p-button>
+    <p-button label="Cancelar" icon="pi pi-times" severity="danger"
+      (onClick)="modalNuevoVisible = false">
+    </p-button>
+    <p-button label="Crear ticket" icon="pi pi-check" severity="success"
+      (onClick)="crearTicket()">
+    </p-button>
   </ng-template>
 </p-dialog>
 
