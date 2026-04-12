@@ -2,66 +2,55 @@
 
   <!-- Header -->
   <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-    <p-button icon="pi pi-arrow-left" [text]="true" severity="secondary" pTooltip="Volver" (onClick)="volver()"></p-button>
+    <p-button icon="pi pi-arrow-left" [text]="true" severity="secondary"
+      pTooltip="Volver" (onClick)="volver()">
+    </p-button>
     <p-breadcrumb [model]="breadcrumbItems" [home]="breadcrumbHome"></p-breadcrumb>
   </div>
 
-  <!-- Sin permisos -->
-  <p-message *ngIf="!tieneAcceso()"
-    severity="error"
-    text="Acceso denegado. Se requiere el permiso admin:users para entrar a esta sección."
-    styleClass="w-full">
-  </p-message>
+  <!-- Cargando -->
+  <div *ngIf="cargando" style="text-align:center; padding: 4rem;">
+    <i class="pi pi-spin pi-spinner" style="font-size: 2rem;"></i>
+    <p style="color:#888; margin-top: 1rem;">Cargando usuarios...</p>
+  </div>
 
-  <div *ngIf="tieneAcceso()">
+  <div *ngIf="!cargando">
 
-    <!-- Selector usuario demo -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-      <div>
-        <h2 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-          <i class="pi pi-shield"></i> Panel Superadmin
-        </h2>
-        <p style="margin: 0.25rem 0 0 0; color: #888; font-size: 0.9rem;">Gestión de usuarios y permisos del sistema</p>
-      </div>
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <span style="font-size: 0.8rem; color: #666;">Usuario activo (demo):</span>
-        <p-select [(ngModel)]="shared.usuarioActivoNombre" [options]="shared.usuarios"
-          optionLabel="nombre" optionValue="nombre" style="width: 160px;">
-        </p-select>
-      </div>
+    <!-- Encabezado del panel -->
+    <div style="margin-bottom: 1.5rem;">
+      <h2 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="pi pi-shield"></i> Panel Superadmin
+      </h2>
+      <p style="margin: 0.25rem 0 0; color: #888; font-size: 0.9rem;">
+        Gestión de usuarios y permisos del sistema
+      </p>
     </div>
 
-    <!-- Tarjetas de métricas -->
+    <!-- Tarjetas métricas -->
     <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem;">
       <div style="flex: 1; min-width: 140px;">
         <p-card header="Total usuarios">
-          <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ shared.usuarios.length }}</p>
+          <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ totalUsuarios }}</p>
           <p-tag value="Registrados" severity="secondary"></p-tag>
         </p-card>
       </div>
       <div style="flex: 1; min-width: 140px;">
-        <p-card header="Activos">
-          <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ contarActivos() }}</p>
-          <p-tag value="En línea" severity="success"></p-tag>
+        <p-card header="Con último login">
+          <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ totalActivos }}</p>
+          <p-tag value="Han ingresado" severity="success"></p-tag>
         </p-card>
       </div>
       <div style="flex: 1; min-width: 140px;">
-        <p-card header="Inactivos">
-          <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ shared.usuarios.length - contarActivos() }}</p>
-          <p-tag value="Suspendidos" severity="danger"></p-tag>
-        </p-card>
-      </div>
-      <div style="flex: 1; min-width: 140px;">
-        <p-card header="Admins">
-          <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ contarAdmins() }}</p>
-          <p-tag value="Con admin:users" severity="warn"></p-tag>
+        <p-card header="Gestionables">
+          <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ usuarios.length }}</p>
+          <p-tag value="Otros usuarios" severity="info"></p-tag>
         </p-card>
       </div>
     </div>
 
     <p-divider></p-divider>
 
-    <!-- Toolbar -->
+    <!-- Toolbar de búsqueda -->
     <p-toolbar styleClass="mb-3">
       <ng-template pTemplate="start">
         <span style="font-weight: 600;">
@@ -70,18 +59,22 @@
       </ng-template>
       <ng-template pTemplate="center">
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <p-select [(ngModel)]="filtroEstado" [options]="estadoOptions" optionLabel="label" optionValue="value"
-            placeholder="Filtrar estado" [showClear]="true" (onChange)="aplicarFiltros()" style="min-width: 140px;">
+          <p-select
+            [(ngModel)]="filtroEstado"
+            [options]="estadoOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Filtrar por login"
+            [showClear]="true"
+            (onChange)="aplicarFiltros()"
+            style="min-width: 160px;">
           </p-select>
-          <input pInputText [(ngModel)]="filtroBusqueda"
+          <input pInputText
+            [(ngModel)]="filtroBusqueda"
             (input)="aplicarFiltros()"
-            placeholder="Buscar por nombre o email..." style="min-width: 220px;" />
+            placeholder="Buscar por nombre o email..."
+            style="min-width: 220px;" />
         </div>
-      </ng-template>
-      <ng-template pTemplate="end">
-        <p-button label="Nuevo usuario" icon="pi pi-user-plus" severity="success"
-          (onClick)="abrirModalNuevo()">
-        </p-button>
       </ng-template>
     </p-toolbar>
 
@@ -91,7 +84,6 @@
       [paginator]="true"
       [rows]="8"
       [rowsPerPageOptions]="[5,8,15,30]"
-      [sortMode]="'multiple'"
       styleClass="p-datatable-sm p-datatable-striped p-datatable-gridlines"
       dataKey="id"
       [expandedRowKeys]="expandedRows">
@@ -99,74 +91,67 @@
       <ng-template pTemplate="header">
         <tr>
           <th style="width: 3rem;"></th>
-          <th pSortableColumn="nombre">Nombre <p-sortIcon field="nombre"></p-sortIcon></th>
+          <th pSortableColumn="nombre_completo">Nombre <p-sortIcon field="nombre_completo"></p-sortIcon></th>
           <th pSortableColumn="email">Email <p-sortIcon field="email"></p-sortIcon></th>
-          <th pSortableColumn="fechaCreacion">Registro <p-sortIcon field="fechaCreacion"></p-sortIcon></th>
-          <th>Estado</th>
+          <th pSortableColumn="fecha_inicio">Registro <p-sortIcon field="fecha_inicio"></p-sortIcon></th>
+          <th>Último login</th>
           <th>Permisos</th>
-          <th style="width: 130px;">Acciones</th>
+          <th style="width: 110px;">Acciones</th>
         </tr>
       </ng-template>
 
-      <ng-template pTemplate="body" let-usuario let-expanded="expanded">
+      <ng-template pTemplate="body" let-u let-expanded="expanded">
         <tr>
           <td>
             <p-button
               [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-              [text]="true"
-              size="small"
-              severity="secondary"
+              [text]="true" size="small" severity="secondary"
               pTooltip="Ver permisos"
-              (onClick)="toggleExpand(usuario)">
+              (onClick)="toggleExpand(u)">
             </p-button>
           </td>
           <td>
             <div style="display: flex; align-items: center; gap: 0.6rem;">
-              <p-avatar [label]="usuario.nombre.charAt(0)" shape="circle" size="normal"
-                [style]="{'background-color': getAvatarColor(usuario.id), 'color': '#fff'}">
+              <p-avatar
+                [label]="u.nombre_completo.charAt(0)"
+                shape="circle" size="normal"
+                [style]="{'background-color': getAvatarColor(u.id), 'color': '#fff'}">
               </p-avatar>
               <div>
-                <div style="font-weight: 600;">{{ usuario.nombre }}</div>
-                <div *ngIf="usuario.nombre === shared.usuarioActivoNombre">
-                  <p-tag value="Tú" severity="info" style="font-size: 0.65rem;"></p-tag>
-                </div>
+                <div style="font-weight: 600;">{{ u.nombre_completo }}</div>
+                <div style="font-size: 0.75rem; color: #888;">@{{ u.username }}</div>
               </div>
             </div>
           </td>
-          <td>{{ usuario.email }}</td>
-          <td>{{ usuario.fechaCreacion }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.fecha_inicio }}</td>
           <td>
-            <p-toggleButton
-              [(ngModel)]="usuario.activo"
-              onLabel="Activo"
-              offLabel="Inactivo"
-              [onIcon]="'pi pi-check'"
-              [offIcon]="'pi pi-times'"
-              [style]="{'width': '100px'}"
-              (onChange)="onToggleActivo(usuario)">
-            </p-toggleButton>
+            <span *ngIf="u.last_login; else sinLogin">
+              {{ u.last_login | date:'dd/MM/yyyy HH:mm' }}
+            </span>
+            <ng-template #sinLogin>
+              <p-tag value="Nunca" severity="secondary"></p-tag>
+            </ng-template>
           </td>
           <td>
-            <p-badge [value]="usuario.permisos.length.toString()" severity="info"
-              pTooltip="Permisos asignados"></p-badge>
+            <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">
+              <p-tag *ngFor="let nombre of u.permisosNombres"
+                [value]="nombre" severity="info" style="font-size: 0.7rem;">
+              </p-tag>
+              <span *ngIf="!u.permisosNombres?.length" style="color:#aaa; font-size:0.8rem;">Sin permisos</span>
+            </div>
           </td>
           <td>
             <div style="display: flex; gap: 0.25rem;">
-
-              <!-- 👈 Solo aparece si tiene admin:perms -->
               <p-button
-                *ngIf="shared.tienePerm('admin:perms')"
                 icon="pi pi-key" [text]="true" severity="warn"
                 pTooltip="Gestionar permisos"
-                (onClick)="abrirModalPermisos(usuario)">
+                (onClick)="abrirModalPermisos(u)">
               </p-button>
-
-              <p-button icon="pi pi-pencil" [text]="true" severity="info" pTooltip="Editar usuario"
-                (onClick)="abrirModalEditar(usuario)">
-              </p-button>
-              <p-button icon="pi pi-trash" [text]="true" severity="danger" pTooltip="Eliminar usuario"
-                [disabled]="usuario.nombre === shared.usuarioActivoNombre"
-                (onClick)="confirmarEliminar(usuario)">
+              <p-button
+                icon="pi pi-trash" [text]="true" severity="danger"
+                pTooltip="Eliminar usuario"
+                (onClick)="confirmarEliminar(u)">
               </p-button>
             </div>
           </td>
@@ -174,139 +159,93 @@
       </ng-template>
 
       <!-- Fila expandida: detalle de permisos -->
-      <ng-template pTemplate="expansion" let-usuario>
+      <ng-template pTemplate="rowexpansion" let-u>
         <tr>
           <td colspan="7" style="background: var(--surface-ground); padding: 1rem 2rem;">
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-              <p style="margin: 0; font-weight: 600; font-size: 0.85rem; color: #555;">
-                <i class="pi pi-key" style="margin-right: 0.4rem;"></i>Permisos de {{ usuario.nombre }}
-              </p>
-              <div *ngFor="let grupo of permisosAgrupados(usuario)" style="display: flex; flex-direction: column; gap: 0.4rem;">
-                <small style="font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #888;">
-                  {{ grupo.nombre }}
-                </small>
-                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                  <p-tag *ngFor="let p of grupo.permisos"
-                    [value]="p.label"
-                    [severity]="usuario.permisos.includes(p.clave) ? 'success' : 'secondary'"
-                    [style.opacity]="usuario.permisos.includes(p.clave) ? 1 : 0.4">
-                  </p-tag>
-                </div>
-              </div>
+            <p style="margin: 0 0 0.75rem; font-weight: 600; font-size: 0.85rem;">
+              <i class="pi pi-key" style="margin-right: 0.4rem;"></i>Permisos de {{ u.nombre_completo }}
+            </p>
+            <div *ngIf="u.permisosNombres?.length; else sinPermisos"
+              style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+              <p-tag *ngFor="let nombre of u.permisosNombres"
+                [value]="nombre" severity="success">
+              </p-tag>
             </div>
+            <ng-template #sinPermisos>
+              <span style="color: #aaa; font-size: 0.85rem;">Este usuario no tiene permisos asignados.</span>
+            </ng-template>
           </td>
         </tr>
       </ng-template>
 
       <ng-template pTemplate="emptymessage">
-        <tr><td colspan="7" style="text-align: center; padding: 2rem;">
-          No hay usuarios que coincidan con los filtros.
-        </td></tr>
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 2rem;">
+            No hay usuarios que coincidan con los filtros.
+          </td>
+        </tr>
       </ng-template>
     </p-table>
 
   </div>
 </div>
 
-<!-- ── Modal nuevo / editar usuario ── -->
+<!-- Modal gestión de permisos -->
 <p-dialog
-  [header]="modoEdicion ? 'Editar usuario' : 'Nuevo usuario'"
-  [(visible)]="modalUsuarioVisible"
-  [modal]="true" [draggable]="false" [resizable]="false"
-  [style]="{ width: '480px' }">
-
-  <div style="display: flex; flex-direction: column; gap: 1rem; padding-top: 0.5rem;">
-    <div>
-      <label style="display: block; margin-bottom: 0.4rem; font-weight: 600;">Nombre *</label>
-      <input pInputText [(ngModel)]="formUsuario.nombre" placeholder="Nombre completo" style="width: 100%;" />
-      <small class="p-error" *ngIf="erroresUsuario.nombre">{{ erroresUsuario.nombre }}</small>
-    </div>
-    <div>
-      <label style="display: block; margin-bottom: 0.4rem; font-weight: 600;">Email *</label>
-      <input pInputText [(ngModel)]="formUsuario.email" placeholder="usuario@email.com" style="width: 100%;" />
-      <small class="p-error" *ngIf="erroresUsuario.email">{{ erroresUsuario.email }}</small>
-    </div>
-    <div *ngIf="!modoEdicion">
-      <label style="display: block; margin-bottom: 0.4rem; font-weight: 600;">Contraseña *</label>
-      <p-password [(ngModel)]="formUsuario.password" [toggleMask]="true"
-        placeholder="Contraseña inicial" style="width: 100%;" styleClass="w-full">
-      </p-password>
-      <small class="p-error" *ngIf="erroresUsuario.password">{{ erroresUsuario.password }}</small>
-    </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <label style="font-weight: 600;">Estado:</label>
-      <p-toggleButton [(ngModel)]="formUsuario.activo"
-        onLabel="Activo" offLabel="Inactivo"
-        [onIcon]="'pi pi-check'" [offIcon]="'pi pi-times'"
-        [style]="{'width': '110px'}">
-      </p-toggleButton>
-    </div>
-  </div>
-
-  <ng-template pTemplate="footer">
-    <p-button label="Cancelar" icon="pi pi-times" severity="secondary" [text]="true"
-      (onClick)="modalUsuarioVisible = false">
-    </p-button>
-    <p-button [label]="modoEdicion ? 'Guardar cambios' : 'Crear usuario'" icon="pi pi-check"
-      severity="success" (onClick)="guardarUsuario()">
-    </p-button>
-  </ng-template>
-</p-dialog>
-
-<!-- ── Modal gestión de permisos ── -->
-<p-dialog
-  [header]="'Permisos de ' + (usuarioEditandoPermisos?.nombre ?? '')"
+  [header]="'Permisos de ' + (usuarioEditandoPermisos?.nombre_completo ?? '')"
   [(visible)]="modalPermisosVisible"
   [modal]="true" [draggable]="false" [resizable]="false"
-  [style]="{ width: '620px' }" [maximizable]="true">
+  [style]="{ width: '580px' }" [maximizable]="true">
 
-  <div *ngIf="usuarioEditandoPermisos" style="display: flex; flex-direction: column; gap: 1.25rem; padding-top: 0.5rem;">
+  <div *ngIf="usuarioEditandoPermisos"
+    style="display: flex; flex-direction: column; gap: 1rem; padding-top: 0.5rem;">
 
     <p-message severity="info"
-      text="Marca o desmarca los permisos del usuario. Los cambios se aplican al guardar.">
+      text="Asigna o quita permisos globales del sistema a este usuario.">
     </p-message>
 
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-      <p-button label="Seleccionar todos" icon="pi pi-check-square" size="small" severity="secondary"
-        (onClick)="seleccionarTodosPermisos()">
+      <p-button label="Seleccionar todos" icon="pi pi-check-square"
+        size="small" severity="secondary" (onClick)="seleccionarTodos()">
       </p-button>
-      <p-button label="Limpiar todos" icon="pi pi-times-circle" size="small" severity="secondary"
-        (onClick)="limpiarTodosPermisos()">
+      <p-button label="Limpiar todos" icon="pi pi-times-circle"
+        size="small" severity="secondary" (onClick)="limpiarTodos()">
       </p-button>
     </div>
 
     <p-divider></p-divider>
 
-    <div *ngFor="let grupo of todosLosPermisosAgrupados">
-      <p style="margin: 0 0 0.6rem 0; font-weight: 700; font-size: 0.8rem;
-        text-transform: uppercase; letter-spacing: 0.07em; color: #666;">
-        <i class="pi pi-tag" style="margin-right: 0.4rem;"></i>{{ grupo.nombre }}
-      </p>
-      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; padding-left: 0.5rem;">
-        <div *ngFor="let perm of grupo.permisos"
-          style="display: flex; align-items: center; gap: 0.4rem; min-width: 200px;">
-          <p-checkbox
-            [ngModel]="permisosEditando.includes(perm.clave)"
-            (ngModelChange)="togglePermiso(perm.clave, $event)"
-            [binary]="true"
-            [inputId]="perm.clave">
-          </p-checkbox>
-          <label [for]="perm.clave" style="cursor: pointer; font-size: 0.9rem;">
-            {{ perm.label }}
-          </label>
-          <p-tag [value]="perm.clave" severity="secondary" style="font-size: 0.6rem;"></p-tag>
-        </div>
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+      <div *ngFor="let perm of permisosEditables"
+        style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.5rem;
+               border: 1px solid var(--surface-border); border-radius: 8px;">
+        <p-checkbox
+          [ngModel]="permisosEditando.includes(perm.id)"
+          (ngModelChange)="togglePermiso(perm.id, $event)"
+          [binary]="true"
+          [inputId]="perm.id">
+        </p-checkbox>
+        <label [for]="perm.id" style="cursor: pointer; flex: 1;">
+          <div style="font-weight: 600; font-size: 0.9rem;">{{ perm.nombre }}</div>
+          <div style="font-size: 0.8rem; color: #888;">{{ perm.descripcion }}</div>
+        </label>
+        <p-tag [value]="perm.nombre" severity="secondary" style="font-size: 0.65rem;"></p-tag>
       </div>
-      <p-divider></p-divider>
     </div>
 
+    <p-divider></p-divider>
+
     <div style="background: var(--surface-ground); border-radius: 8px; padding: 0.75rem;">
-      <p style="margin: 0 0 0.5rem 0; font-weight: 600; font-size: 0.85rem;">
-        Permisos seleccionados ({{ permisosEditando.length }}):
+      <p style="margin: 0 0 0.5rem; font-weight: 600; font-size: 0.85rem;">
+        Seleccionados ({{ permisosEditando.length }}):
       </p>
       <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">
-        <p-tag *ngFor="let p of permisosEditando" [value]="p" severity="success" style="font-size: 0.7rem;"></p-tag>
-        <span *ngIf="permisosEditando.length === 0" style="color: #888; font-size: 0.85rem;">Ninguno</span>
+        <p-tag
+          *ngFor="let uuid of permisosEditando"
+          [value]="shared.todosLosPermisos | permNombre:uuid"
+          severity="success" style="font-size: 0.7rem;">
+        </p-tag>
+        <span *ngIf="!permisosEditando.length" style="color: #888; font-size: 0.85rem;">Ninguno</span>
       </div>
     </div>
 

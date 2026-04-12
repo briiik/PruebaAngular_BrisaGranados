@@ -8,7 +8,8 @@ import { AvatarModule } from 'primeng/avatar';
 import { MenuModule } from 'primeng/menu';
 import { ToastModule } from 'primeng/toast';
 import { SlidebarComponent } from '../slidebar/slidebar.component';
-import { SharedDataService } from '../shared/shared-data.service'; // 👈 agregar
+import { SharedDataService } from '../shared/shared-data.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -33,7 +34,7 @@ export class NavbarComponent {
   sidebarVisible = false;
 
   get usuario(): string {
-    return this.shared.usuarioActivoNombre; // 👈 cambiar esto también
+    return this.shared.usuarioActivoNombre;
   }
 
   userMenuItems: MenuItem[] = [
@@ -44,11 +45,14 @@ export class NavbarComponent {
 
   constructor(
     private router: Router,
-    public shared: SharedDataService, // 👈 agregar
+    public shared: SharedDataService,
+    private auth: AuthService, // ✅ Inyectar AuthService
   ) {}
 
   cerrarSesion() {
-    localStorage.removeItem('usuarioActual');
+    // ✅ Corregido: el token está en una cookie, no en localStorage
+    this.auth.clearToken();
+    localStorage.removeItem('usuarioActual'); // por si guardas datos extra aquí
     this.router.navigate(['/login']);
   }
 }

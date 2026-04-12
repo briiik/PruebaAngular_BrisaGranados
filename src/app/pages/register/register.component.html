@@ -8,12 +8,15 @@
       Registro
     </div>
   </ng-template>
-      <!-- Usuario -->
+
+    <!-- Usuario -->
     <div style="margin-bottom:1rem;">
       <label for="usuario" style="display:block; margin-bottom:0.4rem; font-weight:600;">Usuario *</label>
       <p-iconfield>
         <p-inputicon styleClass="pi pi-user"></p-inputicon>
-        <input pInputText id="usuario" [(ngModel)]="form.usuario" placeholder="Nombre de usuario" style="width:100%;" />
+        <input pInputText id="usuario" [(ngModel)]="form.usuario"
+          [ngClass]="{ 'ng-invalid ng-dirty': errores.usuario }"
+          placeholder="Nombre de usuario" style="width:100%;" />
       </p-iconfield>
       <small class="p-error" *ngIf="errores.usuario">{{ errores.usuario }}</small>
     </div>
@@ -23,7 +26,9 @@
       <label for="email" style="display:block; margin-bottom:0.4rem; font-weight:600;">Email *</label>
       <p-iconfield>
         <p-inputicon styleClass="pi pi-envelope"></p-inputicon>
-        <input pInputText id="email" [(ngModel)]="form.email" placeholder="correo@ejemplo.com" style="width:100%;" />
+        <input pInputText id="email" [(ngModel)]="form.email"
+          [ngClass]="{ 'ng-invalid ng-dirty': errores.email }"
+          placeholder="correo@ejemplo.com" style="width:100%;" />
       </p-iconfield>
       <small class="p-error" *ngIf="errores.email">{{ errores.email }}</small>
     </div>
@@ -33,7 +38,9 @@
       <label for="nombre" style="display:block; margin-bottom:0.4rem; font-weight:600;">Nombre Completo *</label>
       <p-iconfield>
         <p-inputicon styleClass="pi pi-id-card"></p-inputicon>
-        <input pInputText id="nombre" [(ngModel)]="form.nombreCompleto" placeholder="Tu nombre completo" style="width:100%;" />
+        <input pInputText id="nombre" [(ngModel)]="form.nombreCompleto"
+          [ngClass]="{ 'ng-invalid ng-dirty': errores.nombreCompleto }"
+          placeholder="Tu nombre completo" style="width:100%;" />
       </p-iconfield>
       <small class="p-error" *ngIf="errores.nombreCompleto">{{ errores.nombreCompleto }}</small>
     </div>
@@ -43,7 +50,9 @@
       <label for="direccion" style="display:block; margin-bottom:0.4rem; font-weight:600;">Dirección *</label>
       <p-iconfield>
         <p-inputicon styleClass="pi pi-map-marker"></p-inputicon>
-        <input pInputText id="direccion" [(ngModel)]="form.direccion" placeholder="Tu dirección" style="width:100%;" />
+        <input pInputText id="direccion" [(ngModel)]="form.direccion"
+          [ngClass]="{ 'ng-invalid ng-dirty': errores.direccion }"
+          placeholder="Tu dirección" style="width:100%;" />
       </p-iconfield>
       <small class="p-error" *ngIf="errores.direccion">{{ errores.direccion }}</small>
     </div>
@@ -54,6 +63,7 @@
       <p-datepicker
         id="fecha"
         [(ngModel)]="form.fechaNacimiento"
+        [ngClass]="{ 'ng-invalid ng-dirty': errores.fechaNacimiento }"
         dateFormat="yy-mm-dd"
         [showIcon]="true"
         placeholder="Selecciona una fecha"
@@ -67,8 +77,11 @@
       <label for="telefono" style="display:block; margin-bottom:0.4rem; font-weight:600;">Teléfono *</label>
       <p-iconfield>
         <p-inputicon styleClass="pi pi-phone"></p-inputicon>
-        <input pInputText id="telefono" [(ngModel)]="form.telefono" placeholder="10 dígitos" maxlength="10"
-          (keypress)="$event.charCode >= 48 && $event.charCode <= 57" style="width:100%;" />
+        <input pInputText id="telefono" [(ngModel)]="form.telefono"
+          [ngClass]="{ 'ng-invalid ng-dirty': errores.telefono }"
+          placeholder="10 dígitos" maxlength="10"
+          (keypress)="$event.charCode >= 48 && $event.charCode <= 57"
+          style="width:100%;" />
       </p-iconfield>
       <small class="p-error" *ngIf="errores.telefono">{{ errores.telefono }}</small>
     </div>
@@ -79,6 +92,7 @@
       <p-password
         id="password"
         [(ngModel)]="form.password"
+        [ngClass]="{ 'ng-invalid ng-dirty': errores.password }"
         placeholder="Contraseña"
         [toggleMask]="true"
         [feedback]="true"
@@ -93,6 +107,7 @@
       <p-password
         id="confirmPassword"
         [(ngModel)]="form.confirmPassword"
+        [ngClass]="{ 'ng-invalid ng-dirty': errores.confirmPassword }"
         placeholder="Confirma tu contraseña"
         [toggleMask]="true"
         [feedback]="false"
@@ -107,6 +122,7 @@
         label="Registrarse"
         icon="pi pi-check"
         styleClass="p-button-primary"
+        [loading]="cargando"
         (onClick)="registrar()">
       </p-button>
     </div>

@@ -5,52 +5,91 @@ import { RouterModule, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 
 // PrimeNG
-import { CardModule } from 'primeng/card';
-import { InputTextModule } from 'primeng/inputtext';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
-import { PasswordModule } from 'primeng/password';
-import { ButtonModule } from 'primeng/button';
-import { DividerModule } from 'primeng/divider';
-import { MessageModule } from 'primeng/message';
-import { ToastModule } from 'primeng/toast';
+import { CardModule }       from 'primeng/card';
+import { InputTextModule }  from 'primeng/inputtext';
+import { IconFieldModule }  from 'primeng/iconfield';
+import { InputIconModule }  from 'primeng/inputicon';
+import { PasswordModule }   from 'primeng/password';
+import { ButtonModule }     from 'primeng/button';
+import { DividerModule }    from 'primeng/divider';
+import { MessageModule }    from 'primeng/message';
+import { ToastModule }      from 'primeng/toast';
+
+// Servicio
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    RouterModule,
-    CardModule,
-    InputTextModule,
-    IconFieldModule,
-    InputIconModule,
-    PasswordModule,
-    ButtonModule,
-    DividerModule,
-    MessageModule,
-    ToastModule
+    CommonModule, FormsModule, RouterModule,
+    CardModule, InputTextModule, IconFieldModule,
+    InputIconModule, PasswordModule, ButtonModule,
+    DividerModule, MessageModule, ToastModule
   ],
   providers: [MessageService],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
-  usuario = '';
+  usuario  = '';
   password = '';
-  error = false;
+  error    = false;
+  cargando = false;
 
-  private credenciales = { usuario: 'admin', password: 'Hola' };
+  // Easter egg: 5 clicks en el logo
+  private clickCount = 0;
 
-  constructor(private router: Router) {}
+  constructor(
+    private authService:    AuthService,
+    private messageService: MessageService,
+    private router:         Router
+  ) {}
 
-  login() {
-    if (this.usuario === this.credenciales.usuario && this.password === this.credenciales.password) {
-      this.error = false;
-      this.router.navigate(['/grupo'], { state: { usuario: this.usuario } });
-    } else {
+  login(): void {
+    if (!this.usuario.trim() || !this.password.trim()) {
       this.error = true;
+      return;
+    }
+
+    this.error    = false;
+    this.cargando = true;
+
+    this.authService.login({ email: this.usuario, password: this.password })
+      .subscribe({
+        next: (res) => {
+          this.cargando = false;
+
+          // Guardar token y datos del usuario
+          this.authService.saveToken(res.data.token);
+          localStorage.setItem('erp_usuario', JSON.stringify(res.data.usuario));
+
+          this.messageService.add({
+            severity: 'success',
+            summary:  '¡Bienvenido!',
+            detail:   `Hola, ${res.data.usuario.nombre_completo}`,
+            life:     2000
+          });
+
+          setTimeout(() => this.router.navigate(['/grupo']), 1500);
+        },
+        error: () => {
+          this.cargando = false;
+          this.error    = true;
+        }
+      });
+  }
+
+  // Easter egg requerido en el documento (5 clicks en logo → alerta)
+  onLogoClick(): void {
+    this.clickCount++;
+    if (this.clickCount >= 5) {
+      this.clickCount = 0;
+      this.messageService.add({
+        severity: 'warn',
+        summary:  'catch u',
+        life:     3000
+      });
     }
   }
 }

@@ -22,18 +22,11 @@ import { TabsModule }          from 'primeng/tabs';
 import { PanelModule }         from 'primeng/panel';
 import { MessageModule }       from 'primeng/message';
 import { BreadcrumbModule }    from 'primeng/breadcrumb';
-import { ToggleButtonModule }  from 'primeng/togglebutton';
+import { SkeletonModule }      from 'primeng/skeleton';
+import { CheckboxModule }      from 'primeng/checkbox';
 
-import { SharedDataService, Usuario } from '../shared/shared-data.service';
-import { Grupo } from '../grupo/grupo.component';
-
-export interface MiembroGrupo {
-  id: number;
-  nombre: string;
-  email: string;
-  rol: string;
-  activo: boolean;
-}
+import { AuthService }   from '../../core/services/auth.service';
+import { GruposService } from '../../core/services/grupos.service';
 
 @Component({
   selector: 'app-gestion-grupo',
@@ -44,8 +37,8 @@ export interface MiembroGrupo {
     DialogModule, TagModule, AvatarModule, ToastModule,
     ConfirmDialogModule, TooltipModule, DividerModule,
     SelectModule, ToolbarModule, TabsModule, PanelModule,
-    MessageModule, BreadcrumbModule, ToggleButtonModule,
-    NavbarComponent,
+    MessageModule, BreadcrumbModule, SkeletonModule,
+    CheckboxModule, NavbarComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './gestion-grupo.component.html',
@@ -53,229 +46,406 @@ export interface MiembroGrupo {
 })
 export class GestionGrupoComponent implements OnInit {
 
-  grupo: Grupo | null = null;
+  grupo:           any    = null;
+  grupoId:         string = '';
+  usuarioActual:   any    = null;
+  permisosUsuario: string[] = [];
 
-  breadcrumbItems: any[] = [];
-  breadcrumbHome = { icon: 'pi pi-home', routerLink: '/' };
+  miembros:        any[]  = [];
+  todosPermisos:   any[]  = [];
+  cargandoMiembros = false;
 
   avatarColors = ['#C9A84C','#10B981','#3B82F6','#EF4444','#8B5CF6','#EC4899','#06B6D4'];
 
-  miembros: MiembroGrupo[] = [
-    { id: 1, nombre: 'Brisa',    email: 'brisa@mail.com',    rol: 'Líder',         activo: true  },
-    { id: 2, nombre: 'Jonathan', email: 'jonathan@mail.com', rol: 'Desarrollador', activo: true  },
-    { id: 3, nombre: 'Ana',      email: 'ana@mail.com',      rol: 'Diseñadora',    activo: false },
-  ];
+  // ── Modal agregar miembro ───────────────────────────────────────────────────
+  modalAgregarVisible  = false;
+  emailAgregar         = '';
+  errorEmail           = '';
+  usuarioEncontrado:   any = null;
+  buscandoUsuario      = false;
+  // Permisos seleccionados para el nuevo miembro
+  permisosSeleccionados: string[] = [];
 
-  rolesOptions = [
-    { label: 'Líder',         value: 'Líder' },
-    { label: 'Desarrollador', value: 'Desarrollador' },
-    { label: 'Diseñador/a',   value: 'Diseñadora' },
-    { label: 'Tester',        value: 'Tester' },
-    { label: 'Analista',      value: 'Analista' },
-  ];
+  // ── Modal editar permisos ───────────────────────────────────────────────────
+  modalPermisosVisible    = false;
+  miembroEditandoPermisos: any    = null;
+  permisosEditando:        string[] = [];
+  cargandoPermisosMiembro  = false;
+  guardandoPermisos        = false;
 
-  nivelesOptions = [
-    { label: 'Básico',     value: 'Básico' },
-    { label: 'Intermedio', value: 'Intermedio' },
-    { label: 'Avanzado',   value: 'Avanzado' },
-  ];
+  // ── Modal detalle ───────────────────────────────────────────────────────────
+  modalDetalleVisible  = false;
+  miembroSeleccionado: any   = null;
+  permisosMiembro:     any[] = [];
 
-  modalAgregarVisible = false;
-  emailAgregar = '';
-  rolAgregar = '';
-  errorEmail = '';
-  usuarioEncontrado: Usuario | null = null;
-
-  modalDetalleVisible = false;
-  miembroSeleccionado: MiembroGrupo | null = null;
-
-  modalEditarVisible = false;
-  miembroEditando: MiembroGrupo | null = null;
-  erroresEditar: any = {};
-  formEditar: { nombre: string; email: string; rol: string; activo: boolean } = {
-    nombre: '', email: '', rol: '', activo: true,
-  };
-
-  nombreGrupoEdit = '';
+  // ── Configuración grupo ─────────────────────────────────────────────────────
+  nombreGrupoEdit      = '';
   descripcionGrupoEdit = '';
-  nivelGrupoEdit = '';
-  errorNombre = '';
+  errorNombre          = '';
+  guardandoGrupo       = false;
 
   constructor(
-    public shared: SharedDataService,
-    private router: Router,
-    private route: ActivatedRoute,
-    private messageService: MessageService,
+    public  authService:         AuthService,
+    private gruposService:       GruposService,
+    private router:              Router,
+    private route:               ActivatedRoute,
+    private messageService:      MessageService,
     private confirmationService: ConfirmationService,
   ) {}
 
-  ngOnInit() {
-    const nav = this.router.getCurrentNavigation();
-    const state = nav?.extras?.state as { grupo: Grupo };
+  ngOnInit(): void {
+    const raw = localStorage.getItem('erp_usuario');
+    if (!raw) { this.router.navigate(['/login']); return; }
+    this.usuarioActual = JSON.parse(raw);
+
+    this.grupoId = this.route.snapshot.paramMap.get('id') ?? '';
+
+    const nav   = this.router.getCurrentNavigation();
+    const state = nav?.extras?.state as { grupo: any };
     if (state?.grupo) {
       this.grupo = state.grupo;
+    }
+
+    this.cargarDatos();
+  }
+
+  // ── Carga ───────────────────────────────────────────────────────────────────
+
+  cargarDatos(): void {
+    this.cargarPermisos();
+    this.cargarMiembros();
+    this.cargarTodosPermisos();
+
+    if (!this.grupo) {
+      this.gruposService.getGrupo(this.grupoId).subscribe({
+        next: (res) => {
+          this.grupo            = res.data;
+          this.nombreGrupoEdit      = this.grupo?.nombre      ?? '';
+          this.descripcionGrupoEdit = this.grupo?.descripcion ?? '';
+        }
+      });
     } else {
-      const id = Number(this.route.snapshot.paramMap.get('id'));
-      this.grupo = { id, nombre: `Grupo ${id}`, nivel: 'Avanzado', autor: 'Brisa', integrantes: 3, tickets: 0, descripcion: '' };
+      this.nombreGrupoEdit      = this.grupo?.nombre      ?? '';
+      this.descripcionGrupoEdit = this.grupo?.descripcion ?? '';
     }
-
-    this.nombreGrupoEdit      = this.grupo?.nombre      ?? '';
-    this.descripcionGrupoEdit = this.grupo?.descripcion ?? '';
-    this.nivelGrupoEdit       = this.grupo?.nivel       ?? 'Avanzado';
   }
 
-  puedeVerGestion(): boolean {
-    return this.shared.tienePerm('group:view') ||
-           this.shared.tienePerm('group:edit') ||
-           this.shared.tienePerm('group:add')  ||
-           this.shared.tienePerm('group:delete');
+  cargarPermisos(): void {
+    this.gruposService.getPermisos(this.grupoId, this.usuarioActual.id).subscribe({
+      next: (res) => {
+        this.permisosUsuario = (res.data ?? []).map((p: any) => p.nombre);
+
+        if (!this.tienePerm('group:manage')) {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Acceso denegado',
+            detail: 'No tienes permisos para gestionar este grupo'
+          });
+          this.router.navigate(['/grupo-dashboard', this.grupoId], {
+            state: { grupo: this.grupo }
+          });
+        }
+      }
+    });
   }
 
-  permisosGrupoActivos(): string[] {
-    const gperm = ['group:view','group:edit','group:add','group:delete'];
-    return this.shared.usuarioActivo?.permisos.filter(p => gperm.includes(p)) ?? [];
+  cargarMiembros(): void {
+    this.cargandoMiembros = true;
+    this.gruposService.getMiembros(this.grupoId).subscribe({
+      next: (res) => {
+        this.cargandoMiembros = false;
+        this.miembros = res.data ?? [];
+      },
+      error: () => { this.cargandoMiembros = false; }
+    });
   }
 
-  getPermisosGrupo(miembro: MiembroGrupo): string[] {
-    const usuario = this.shared.usuarios.find(u => u.nombre === miembro.nombre);
-    if (!usuario) return [];
-    return usuario.permisos.filter(p => p.startsWith('group:') || p.startsWith('ticket:'));
+  cargarTodosPermisos(): void {
+  this.gruposService.getCatalogoPermisos().subscribe({
+    next: (res) => {
+      this.todosPermisos = (res.data ?? []).filter((p: any) =>
+        !['superadmin', 'group:create'].includes(p.nombre)
+      );
+    }
+  });
+}
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  tienePerm(permiso: string): boolean {
+    return this.permisosUsuario.includes(permiso);
   }
 
-  getAvatarColor(id: number): string {
-    return this.avatarColors[(id - 1) % this.avatarColors.length];
+  esUsuarioActual(miembro: any): boolean {
+  return miembro?.usuarios?.id === this.usuarioActual?.id;
+}
+
+esCreadorGrupo(miembro: any): boolean {
+  return miembro?.usuarios?.id === this.grupo?.creador_id;
+}
+
+getNombre(miembro: any): string {
+  return miembro?.usuarios?.nombre_completo ?? miembro?.usuarios?.username ?? '—';
+}
+
+getEmail(miembro: any): string {
+  return miembro?.usuarios?.email ?? '—';
+}
+
+getAvatarColor(id: string): string {
+  if (!id) return this.avatarColors[0];
+  const num = parseInt(id.replace(/-/g,'').substring(0, 8), 16);
+  return this.avatarColors[num % this.avatarColors.length];
+}
+
+  // Devuelve los permisos de grupo separados de los de ticket para mostrarlos organizados
+  permisosDeGrupo(permisos: any[]): any[] {
+    return permisos.filter(p => p.nombre.startsWith('group:'));
   }
 
-  abrirModalDetalle(miembro: MiembroGrupo) {
+  permisosDeTicket(permisos: any[]): any[] {
+    return permisos.filter(p => p.nombre.startsWith('ticket:'));
+  }
+
+  // ── Modal detalle ───────────────────────────────────────────────────────────
+
+  abrirModalDetalle(miembro: any): void {
     this.miembroSeleccionado = miembro;
+    this.permisosMiembro     = [];
     this.modalDetalleVisible = true;
+    this.cargandoPermisosMiembro = true;
+
+    this.gruposService.getPermisos(this.grupoId, miembro.usuarios?.id).subscribe({
+      next: (res) => {
+        this.cargandoPermisosMiembro = false;
+        this.permisosMiembro = res.data ?? [];
+      },
+      error: () => { this.cargandoPermisosMiembro = false; }
+    });
   }
 
-  abrirModalEditar(miembro: MiembroGrupo) {
-    this.miembroEditando = miembro;
-    this.erroresEditar   = {};
-    this.formEditar = { nombre: miembro.nombre, email: miembro.email, rol: miembro.rol, activo: miembro.activo };
-    this.modalEditarVisible = true;
+  // ── Modal editar permisos ───────────────────────────────────────────────────
+
+  abrirModalPermisos(miembro: any): void {
+    this.miembroEditandoPermisos = miembro;
+    this.permisosEditando        = [];
+    this.modalPermisosVisible    = true;
+    this.cargandoPermisosMiembro = true;
+
+    this.gruposService.getPermisos(this.grupoId, miembro.usuarios?.id).subscribe({
+      next: (res) => {
+        this.cargandoPermisosMiembro = false;
+        // Precargar los permisos actuales del miembro como seleccionados
+        this.permisosEditando = (res.data ?? []).map((p: any) => p.id);
+      },
+      error: () => { this.cargandoPermisosMiembro = false; }
+    });
   }
 
-  pasarAEditar() {
-    if (!this.miembroSeleccionado) return;
-    this.modalDetalleVisible = false;
-    this.abrirModalEditar(this.miembroSeleccionado);
+  guardarPermisosMiembro(): void {
+    if (!this.miembroEditandoPermisos) return;
+    this.guardandoPermisos = true;
+
+    const usuarioId = this.miembroEditandoPermisos.usuarios?.id;
+
+    this.gruposService.actualizarPermisosMiembro(
+      this.grupoId,
+      usuarioId,
+      this.permisosEditando
+    ).subscribe({
+      next: () => {
+        this.guardandoPermisos    = false;
+        this.modalPermisosVisible = false;
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Permisos actualizados',
+          detail: `Permisos de ${this.getNombre(this.miembroEditandoPermisos)} actualizados`
+        });
+      },
+      error: (err) => {
+        this.guardandoPermisos = false;
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err.error?.data?.error ?? 'No se pudieron actualizar los permisos'
+        });
+      }
+    });
   }
 
-  guardarEdicionMiembro() {
-    this.erroresEditar = {};
-    if (!this.formEditar.nombre.trim()) this.erroresEditar.nombre = 'El nombre es requerido.';
-    if (!this.formEditar.email.trim())  this.erroresEditar.email  = 'El email es requerido.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formEditar.email))
-      this.erroresEditar.email = 'Formato de email inválido.';
-    if (Object.keys(this.erroresEditar).length > 0) return;
-    if (!this.miembroEditando) return;
+  // ── Modal agregar miembro ───────────────────────────────────────────────────
 
-    const idx = this.miembros.findIndex(m => m.id === this.miembroEditando!.id);
-    if (idx !== -1) {
-      this.miembros[idx] = { ...this.miembros[idx], nombre: this.formEditar.nombre.trim(),
-        email: this.formEditar.email.trim(), rol: this.formEditar.rol, activo: this.formEditar.activo };
-      this.miembros = [...this.miembros];
-    }
-    const usuarioIdx = this.shared.usuarios.findIndex(u => u.id === this.miembroEditando!.id);
-    if (usuarioIdx !== -1) {
-      this.shared.usuarios[usuarioIdx].nombre = this.formEditar.nombre.trim();
-      this.shared.usuarios[usuarioIdx].email  = this.formEditar.email.trim();
-      this.shared.usuarios[usuarioIdx].activo = this.formEditar.activo;
-    }
-    this.messageService.add({ severity: 'success', summary: 'Guardado', detail: `Datos de ${this.formEditar.nombre} actualizados.` });
-    this.modalEditarVisible = false;
+  abrirModalAgregar(): void {
+    this.emailAgregar          = '';
+    this.errorEmail            = '';
+    this.usuarioEncontrado     = null;
+    this.buscandoUsuario       = false;
+    // Permisos por default: group:view y ticket:view
+    this.permisosSeleccionados = this.todosPermisos
+      .filter(p => ['group:view', 'ticket:view'].includes(p.nombre))
+      .map(p => p.id);
+    this.modalAgregarVisible   = true;
   }
 
-  abrirModalAgregar() {
-    this.emailAgregar = ''; this.rolAgregar = ''; this.errorEmail = ''; this.usuarioEncontrado = null;
-    this.modalAgregarVisible = true;
-  }
+  cerrarModalAgregar(): void { this.modalAgregarVisible = false; }
 
-  cerrarModalAgregar() { this.modalAgregarVisible = false; }
-
-  buscarUsuarioPorEmail() {
-    this.errorEmail = ''; this.usuarioEncontrado = null;
+  buscarUsuarioPorEmail(): void {
+    this.errorEmail        = '';
+    this.usuarioEncontrado = null;
     if (!this.emailAgregar?.trim()) { this.errorEmail = 'Ingresa un email'; return; }
-    const encontrado = this.shared.usuarios.find(u => u.email.toLowerCase() === this.emailAgregar.trim().toLowerCase());
-    if (!encontrado) { this.errorEmail = 'No se encontró ningún usuario con ese email.'; return; }
-    const yaEsMiembro = this.miembros.some(m => m.email.toLowerCase() === encontrado.email.toLowerCase());
+
+    const yaEsMiembro = this.miembros.some(m =>
+      this.getEmail(m).toLowerCase() === this.emailAgregar.trim().toLowerCase()
+    );
     if (yaEsMiembro) { this.errorEmail = 'Este usuario ya es miembro del grupo.'; return; }
-    this.usuarioEncontrado = encontrado;
+
+    this.buscandoUsuario = true;
+    const headers = { Authorization: `Bearer ${this.authService.getToken()}` };
+
+    this.gruposService['http']
+      .get<any>(`http://localhost:3000/api/usuarios/buscar?email=${encodeURIComponent(this.emailAgregar.trim())}`, { headers })
+      .subscribe({
+        next: (res: any) => {
+          this.buscandoUsuario   = false;
+          this.usuarioEncontrado = res.data;
+        },
+        error: () => {
+          this.buscandoUsuario = false;
+          this.errorEmail      = 'No se encontró ningún usuario con ese email.';
+        }
+      });
   }
 
-  agregarMiembro() {
-    if (!this.usuarioEncontrado || !this.rolAgregar) return;
-    const nuevoId = this.miembros.length ? Math.max(...this.miembros.map(m => m.id)) + 1 : 1;
-    this.miembros = [...this.miembros, { id: nuevoId, nombre: this.usuarioEncontrado.nombre,
-      email: this.usuarioEncontrado.email, rol: this.rolAgregar, activo: this.usuarioEncontrado.activo }];
-    this.messageService.add({ severity: 'success', summary: 'Miembro agregado', detail: `${this.usuarioEncontrado.nombre} fue agregado al grupo.` });
-    this.cerrarModalAgregar();
+  agregarMiembro(): void {
+    if (!this.usuarioEncontrado) return;
+
+    const usuario = this.usuarioEncontrado;
+
+    this.gruposService.agregarMiembro(
+      this.grupoId,
+      usuario.id,
+      this.permisosSeleccionados
+    ).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Agregado',
+          detail: `${usuario.nombre_completo ?? usuario.username} fue agregado al grupo`
+        });
+        this.cargarMiembros();
+        this.cerrarModalAgregar();
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err.error?.data?.error ?? 'No se pudo agregar el miembro'
+        });
+      }
+    });
   }
 
-  confirmarEliminarMiembro(miembro: MiembroGrupo) {
+  // ── Eliminar miembro ────────────────────────────────────────────────────────
+
+  confirmarEliminarMiembro(miembro: any): void {
     this.confirmationService.confirm({
-      message: `¿Eliminar a <b>${miembro.nombre}</b> del grupo?`,
+      message: `¿Eliminar a <b>${this.getNombre(miembro)}</b> del grupo?`,
       header: 'Confirmar eliminación', icon: 'pi pi-user-minus',
       acceptLabel: 'Eliminar', rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
-        this.miembros = this.miembros.filter(m => m.id !== miembro.id);
-        this.messageService.add({ severity: 'warn', summary: 'Eliminado', detail: `${miembro.nombre} fue removido del grupo.` });
+        this.gruposService.eliminarMiembro(this.grupoId, miembro.usuarios?.id).subscribe({
+          next: () => {
+            this.miembros = this.miembros.filter(m => m.usuarios?.id !== miembro.usuarios?.id);
+            this.messageService.add({
+              severity: 'warn',
+              summary: 'Eliminado',
+              detail: `${this.getNombre(miembro)} fue removido del grupo`
+            });
+          },
+          error: (err) => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: err.error?.data?.error ?? 'No se pudo eliminar el miembro'
+            });
+          }
+        });
       },
     });
   }
 
-  guardarNombreGrupo() {
-    this.errorNombre = '';
-    if (!this.nombreGrupoEdit?.trim()) { this.errorNombre = 'El nombre no puede estar vacío.'; return; }
-    if (this.grupo) this.grupo.nombre = this.nombreGrupoEdit.trim();
-    this.messageService.add({ severity: 'success', summary: 'Guardado', detail: 'Nombre del grupo actualizado.' });
-  }
+  // ── Configuración del grupo ─────────────────────────────────────────────────
 
-  guardarCambiosGrupo() {
+  guardarCambiosGrupo(): void {
     this.errorNombre = '';
-    if (!this.nombreGrupoEdit?.trim()) { this.errorNombre = 'El nombre no puede estar vacío.'; return; }
-    if (this.grupo) {
-      this.grupo.nombre      = this.nombreGrupoEdit.trim();
-      this.grupo.descripcion = this.descripcionGrupoEdit;
-      this.grupo.nivel       = this.nivelGrupoEdit;
+    if (!this.nombreGrupoEdit?.trim()) {
+      this.errorNombre = 'El nombre no puede estar vacío.';
+      return;
     }
-    this.messageService.add({ severity: 'success', summary: 'Guardado', detail: 'Cambios del grupo guardados correctamente.' });
-  }
 
-  resetFormGrupo() {
-    this.nombreGrupoEdit      = this.grupo?.nombre      ?? '';
-    this.descripcionGrupoEdit = this.grupo?.descripcion ?? '';
-    this.nivelGrupoEdit       = this.grupo?.nivel       ?? 'Avanzado';
-    this.errorNombre = '';
-  }
-
-  confirmarArchivar() {
-    this.confirmationService.confirm({
-      message: '¿Deseas archivar este grupo? Quedará inactivo.',
-      header: 'Archivar grupo', icon: 'pi pi-inbox',
-      acceptLabel: 'Archivar', rejectLabel: 'Cancelar',
-      accept: () => this.messageService.add({ severity: 'info', summary: 'Archivado', detail: 'El grupo fue archivado.' }),
+    this.guardandoGrupo = true;
+    this.gruposService.editarGrupo(
+      this.grupoId,
+      this.nombreGrupoEdit.trim(),
+      this.descripcionGrupoEdit
+    ).subscribe({
+      next: (res) => {
+        this.guardandoGrupo    = false;
+        this.grupo.nombre      = res.data.nombre;
+        this.grupo.descripcion = res.data.descripcion;
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Guardado',
+          detail: 'Cambios del grupo guardados correctamente'
+        });
+      },
+      error: (err) => {
+        this.guardandoGrupo = false;
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: err.error?.data?.error ?? 'No se pudo guardar'
+        });
+      }
     });
   }
 
-  confirmarEliminarGrupo() {
+  resetFormGrupo(): void {
+    this.nombreGrupoEdit      = this.grupo?.nombre      ?? '';
+    this.descripcionGrupoEdit = this.grupo?.descripcion ?? '';
+    this.errorNombre          = '';
+  }
+
+  confirmarEliminarGrupo(): void {
     this.confirmationService.confirm({
       message: '¿Estás seguro de que deseas <b>eliminar permanentemente</b> este grupo?',
       header: 'Eliminar grupo', icon: 'pi pi-exclamation-triangle',
       acceptLabel: 'Eliminar', rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
-        this.messageService.add({ severity: 'error', summary: 'Eliminado', detail: 'El grupo fue eliminado.' });
-        setTimeout(() => this.router.navigate(['/grupo']), 1500);
+        this.gruposService.eliminarGrupo(this.grupoId).subscribe({
+          next: () => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Eliminado',
+              detail: 'El grupo fue eliminado'
+            });
+            setTimeout(() => this.router.navigate(['/grupo']), 1500);
+          },
+          error: (err) => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: err.error?.data?.error ?? 'No se pudo eliminar el grupo'
+            });
+          }
+        });
       },
     });
   }
 
-  volver() {
-    this.router.navigate(['/grupo-dashboard', this.grupo?.id], { state: { grupo: this.grupo } });
+  volver(): void {
+    this.router.navigate(['/grupo-dashboard', this.grupoId], { state: { grupo: this.grupo } });
   }
 }

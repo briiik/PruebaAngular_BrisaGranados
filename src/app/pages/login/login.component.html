@@ -3,9 +3,11 @@
 <div style="display:flex; justify-content:center; align-items:center; min-height:100vh;">
   <p-card [style]="{ width: '100%', maxWidth: '400px', textAlign: 'center' }">
 
-    <!-- Titulo -->
+    <!-- Logo con easter egg (5 clicks) -->
     <ng-template pTemplate="header">
-      <h2 style="margin:0; text-align:center;">Inicio de Sesión</h2>
+      <div style="text-align:center; padding-top:1.5rem; cursor:pointer;" (click)="onLogoClick()">
+        <h2 style="margin:0.5rem 0 0; text-align:center;">Inicio de Sesión</h2>
+      </div>
     </ng-template>
 
     <!-- Error -->
@@ -15,31 +17,32 @@
       [style]="{ width: '100%', marginBottom: '1rem' }">
     </p-message>
 
-    <!-- Usuario -->
-    <div style="margin-bottom:1.5rem; text-align:center;">
-      <label for="usuario" style="display:block; margin-bottom:0.4rem; font-weight:300;">
-        Usuario
+    <!-- Usuario / Email -->
+    <div style="margin-bottom:1.5rem; text-align:left;">
+      <label for="usuario" style="display:block; margin-bottom:0.4rem; font-weight:600;">
+        Email
       </label>
-
-      <p-iconfield style="width:100%; text-align:center;">
+      <p-iconfield style="width:100%;">
+        <p-inputicon styleClass="pi pi-user"></p-inputicon>
         <input
           pInputText
           id="usuario"
           [(ngModel)]="usuario"
-          placeholder="Ingresa tu usuario"
-          style="width:70%;" />
+          [ngClass]="{ 'ng-invalid ng-dirty': error }"
+          placeholder="Ingresa tu usuario o email"
+          style="width:100%;" />
       </p-iconfield>
     </div>
 
     <!-- Contraseña -->
-    <div style="margin-bottom:1.5rem; text-align:center;">
-      <label for="password" style="display:block; margin-bottom:0.4rem; font-weight:normal;">
+    <div style="margin-bottom:1.5rem; text-align:left;">
+      <label for="password" style="display:block; margin-bottom:0.4rem; font-weight:600;">
         Contraseña
       </label>
-
       <p-password
         id="password"
         [(ngModel)]="password"
+        [ngClass]="{ 'ng-invalid ng-dirty': error }"
         placeholder="Ingresa tu contraseña"
         [toggleMask]="true"
         [feedback]="false"
@@ -54,6 +57,7 @@
         label="Iniciar Sesión"
         icon="pi pi-sign-in"
         styleClass="w-full"
+        [loading]="cargando"
         (onClick)="login()">
       </p-button>
     </div>
@@ -62,8 +66,7 @@
 
     <p style="text-align:center; margin:0;">
       ¿No tienes cuenta?
-      <a
-        routerLink="/register"
+      <a routerLink="/register"
         style="color:var(--primary-color); text-decoration:none; font-weight:600;">
         Regístrate
       </a>

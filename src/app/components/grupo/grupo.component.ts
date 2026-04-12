@@ -4,33 +4,26 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 
-import { CardModule }        from 'primeng/card';
-import { TagModule }         from 'primeng/tag';
-import { DividerModule }     from 'primeng/divider';
-import { ToastModule }       from 'primeng/toast';
-import { ButtonModule }      from 'primeng/button';
-import { DialogModule }      from 'primeng/dialog';
-import { InputTextModule }   from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { TextareaModule }    from 'primeng/textarea';
+import { CardModule }          from 'primeng/card';
+import { TagModule }           from 'primeng/tag';
+import { DividerModule }       from 'primeng/divider';
+import { ToastModule }         from 'primeng/toast';
+import { ButtonModule }        from 'primeng/button';
+import { DialogModule }        from 'primeng/dialog';
+import { InputTextModule }     from 'primeng/inputtext';
+import { TextareaModule }      from 'primeng/textarea';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { TooltipModule }     from 'primeng/tooltip';
-import { AvatarModule }      from 'primeng/avatar';
-import { MessageModule }     from 'primeng/message';
-import { SelectModule }      from 'primeng/select';
+import { TooltipModule }       from 'primeng/tooltip';
+import { AvatarModule }        from 'primeng/avatar';
+import { MessageModule }       from 'primeng/message';
+import { SelectModule }        from 'primeng/select';
+import { SkeletonModule }      from 'primeng/skeleton';
 
-import { NavbarComponent } from '../navbar/navbar.component';
-import { SharedDataService } from '../shared/shared-data.service'; // 👈
-
-export interface Grupo {
-  id: number;
-  nombre: string;
-  nivel: string;
-  autor: string;
-  integrantes: number;
-  tickets: number;
-  descripcion: string;
-}
+import { NavbarComponent }   from '../navbar/navbar.component';
+import { AuthService }       from '../../core/services/auth.service';
+import { GruposService }     from '../../core/services/grupos.service';
+import { TicketsService }    from '../../core/services/tickets.service';
+import { SharedDataService } from '../shared/shared-data.service';
 
 @Component({
   selector: 'app-grupo',
@@ -38,9 +31,10 @@ export interface Grupo {
   imports: [
     CommonModule, FormsModule,
     CardModule, TagModule, DividerModule, ToastModule,
-    ButtonModule, DialogModule, InputTextModule, InputNumberModule,
-    TextareaModule, ConfirmDialogModule, TooltipModule, AvatarModule,
-    MessageModule, SelectModule, NavbarComponent,
+    ButtonModule, DialogModule, InputTextModule,
+    TextareaModule, ConfirmDialogModule, TooltipModule,
+    AvatarModule, MessageModule, SelectModule, SkeletonModule,
+    NavbarComponent,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './grupo.component.html',
@@ -48,127 +42,208 @@ export interface Grupo {
 })
 export class GrupoComponent implements OnInit {
 
-  grupos: Grupo[] = [
-    { id: 1, nombre: 'IDGS14', nivel: 'Avanzado',   autor: 'Brisa',    integrantes: 4, tickets: 12, descripcion: 'Grupo de desarrollo de software' },
-    { id: 2, nombre: 'IDGS10', nivel: 'Intermedio', autor: 'Jonathan', integrantes: 3, tickets: 8,  descripcion: 'Grupo de análisis de sistemas' },
-  ];
+  grupos:   any[] = [];
+  cargando = false;
+  usuarioActual: any = null;
 
-  nivelesOptions = [
-    { label: 'Básico',     value: 'Básico' },
-    { label: 'Intermedio', value: 'Intermedio' },
-    { label: 'Avanzado',   value: 'Avanzado' },
-  ];
+  // Mapa de permisos por grupo: { "uuid-grupo": ["group:edit", "group:delete", ...] }
+  permisosporGrupo: Record<string, string[]> = {};
 
-  avatarColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+  avatarColors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4'];
 
-  modalVisible    = false;
-  modoEdicion     = false;
-  grupoEditandoId: number | null = null;
-  errores: any    = {};
-  form            = this.formVacio();
+  modalVisible     = false;
+  modoEdicion      = false;
+  grupoEditandoId: string | null = null;
+  errores: any     = {};
+  form             = this.formVacio();
 
   constructor(
-    private messageService: MessageService,
+    private messageService:      MessageService,
     private confirmationService: ConfirmationService,
-    private router: Router,
-    public shared: SharedDataService, // 👈
+    private router:              Router,
+    private authService:         AuthService,
+    private gruposService:       GruposService,
+    private ticketsService:      TicketsService,
+    private sharedData:          SharedDataService,
   ) {}
 
-  ngOnInit() {
-    const nav = this.router.getCurrentNavigation();
-    const state = nav?.extras?.state as { usuario?: string };
-    if (state?.usuario) {
-      localStorage.setItem('usuarioActual', state.usuario);
-    }
+  ngOnInit(): void {
+    const raw = localStorage.getItem('erp_usuario');
+    if (!raw) { this.router.navigate(['/login']); return; }
+    this.usuarioActual = JSON.parse(raw);
+    this.cargarGrupos();
   }
 
-  formVacio() {
-    return { nombre: '', nivel: '', autor: '', integrantes: null as number | null, tickets: null as number | null, descripcion: '' };
+  // ── Permisos ────────────────────────────────────────────────────────────────
+
+  // Permisos globales (ej: group:create, superadmin)
+  tienePermGlobal(permiso: string): boolean {
+    return this.sharedData.tienePerm(permiso);
   }
 
-  getAvatarColor(id: number): string {
-    return this.avatarColors[(id - 1) % this.avatarColors.length];
+  // Permisos específicos de un grupo
+  tienePermEnGrupo(grupoId: string, permiso: string): boolean {
+    return this.permisosporGrupo[grupoId]?.includes(permiso) ?? false;
   }
 
-  getNivelSeverity(nivel: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' {
-    const map: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary'> = {
-      'Básico': 'info', 'Intermedio': 'warn', 'Avanzado': 'success',
-    };
-    return map[nivel] ?? 'secondary';
+  // Verifica si el usuario actual es el creador del grupo
+  esCreador(grupo: any): boolean {
+    return grupo.creador_id === this.usuarioActual?.id;
   }
 
-  irAlDashboard(grupo: Grupo) {
+  puedeVerDashboard(grupo: any): boolean {
+    return this.tienePermEnGrupo(grupo.id, 'group:view') || this.esCreador(grupo);
+  }
+
+  // ── Carga ───────────────────────────────────────────────────────────────────
+
+  cargarGrupos(): void {
+    this.cargando = true;
+    this.gruposService.getMisGrupos().subscribe({
+      next: (res) => {
+        this.cargando = false;
+        this.grupos = res.data ?? [];
+        // Por cada grupo cargamos tickets y permisos individuales
+        this.grupos.forEach((g: any) => {
+          this.cargarConteoTickets(g);
+          this.cargarPermisosDeGrupo(g.id);
+        });
+      },
+      error: () => {
+        this.cargando = false;
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los grupos' });
+      }
+    });
+  }
+
+  cargarConteoTickets(grupo: any): void {
+    this.ticketsService.getTicketsPorGrupo(grupo.id).subscribe({
+      next: (res) => { grupo._totalTickets = (res.data ?? []).length; }
+    });
+  }
+
+  cargarPermisosDeGrupo(grupoId: string): void {
+    this.gruposService.getPermisos(grupoId, this.usuarioActual.id).subscribe({
+      next: (res) => {
+        this.permisosporGrupo[grupoId] = (res.data ?? []).map((p: any) => p.nombre);
+      }
+    });
+  }
+
+  // ── Navegación ──────────────────────────────────────────────────────────────
+
+  irAlDashboard(grupo: any): void {
     this.router.navigate(['/grupo-dashboard', grupo.id], { state: { grupo } });
   }
 
-  abrirModal() {
-    this.modoEdicion = false;
-    this.form        = this.formVacio();
-    this.errores     = {};
+  // ── CRUD grupos ─────────────────────────────────────────────────────────────
+
+  abrirModal(): void {
+    this.modoEdicion  = false;
+    this.form         = this.formVacio();
+    this.errores      = {};
     this.modalVisible = true;
   }
 
-  editarCard(event: Event, grupo: Grupo) {
+  editarCard(event: Event, grupo: any): void {
     event.stopPropagation();
-    this.editar(grupo);
-  }
-
-  editar(grupo: Grupo) {
     this.modoEdicion     = true;
     this.grupoEditandoId = grupo.id;
-    this.form            = { ...grupo };
+    this.form            = { nombre: grupo.nombre, descripcion: grupo.descripcion ?? '' };
     this.errores         = {};
     this.modalVisible    = true;
   }
 
-  cerrarModal() {
+  cerrarModal(): void {
     this.modalVisible = false;
     this.errores      = {};
   }
 
   validar(): boolean {
     this.errores = {};
-    if (!this.form.nombre?.trim())  this.errores.nombre      = 'El nombre es requerido';
-    if (!this.form.nivel?.trim())   this.errores.nivel       = 'El nivel es requerido';
-    if (!this.form.autor?.trim())   this.errores.autor       = 'El autor es requerido';
-    if (!this.form.integrantes)     this.errores.integrantes = 'Los integrantes son requeridos';
-    if (this.form.tickets === null) this.errores.tickets     = 'Los tickets son requeridos';
+    if (!this.form.nombre?.trim()) this.errores.nombre = 'El nombre es requerido';
     return Object.keys(this.errores).length === 0;
   }
 
-  guardar() {
+  guardar(): void {
     if (!this.validar()) return;
 
     if (this.modoEdicion) {
-      const idx = this.grupos.findIndex(g => g.id === this.grupoEditandoId);
-      if (idx !== -1) {
-        this.grupos[idx] = { id: this.grupoEditandoId!, ...this.form } as Grupo;
-        this.grupos = [...this.grupos];
-      }
-      this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Grupo actualizado correctamente' });
+      // ← Antes era solo local, ahora llama al backend
+      this.gruposService.editarGrupo(this.grupoEditandoId!, this.form.nombre, this.form.descripcion).subscribe({
+        next: (res) => {
+          const idx = this.grupos.findIndex(g => g.id === this.grupoEditandoId);
+          if (idx !== -1) {
+            this.grupos[idx] = { ...this.grupos[idx], ...res.data };
+            this.grupos = [...this.grupos];
+          }
+          this.messageService.add({ severity: 'success', summary: 'Actualizado', detail: 'Grupo actualizado correctamente' });
+        },
+        error: (err) => {
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: err.error?.data?.error ?? 'No se pudo actualizar el grupo' });
+        }
+      });
     } else {
-      const nuevoId = this.grupos.length ? Math.max(...this.grupos.map(g => g.id)) + 1 : 1;
-      this.grupos = [...this.grupos, { id: nuevoId, ...this.form } as Grupo];
-      this.messageService.add({ severity: 'success', summary: 'Agregado', detail: 'Grupo agregado correctamente' });
+      this.gruposService.crearGrupo(this.form.nombre, this.form.descripcion).subscribe({
+        next: (res) => {
+          const nuevoGrupo = {
+            ...res.data,
+            _totalTickets: 0,
+            usuarios: {
+              nombre_completo: this.usuarioActual.nombre_completo,
+              username:        this.usuarioActual.username
+            }
+          };
+          this.grupos = [...this.grupos, nuevoGrupo];
+          // Cargar permisos del grupo recién creado
+          this.cargarPermisosDeGrupo(nuevoGrupo.id);
+          this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Grupo creado correctamente' });
+        },
+        error: (err) => {
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: err.error?.data?.error ?? 'No se pudo crear el grupo' });
+        }
+      });
     }
     this.cerrarModal();
   }
 
-  confirmarEliminarCard(event: Event, grupo: Grupo) {
+  confirmarEliminarCard(event: Event, grupo: any): void {
     event.stopPropagation();
-    this.confirmarEliminar(grupo);
-  }
-
-  confirmarEliminar(grupo: Grupo) {
     this.confirmationService.confirm({
       message: `¿Estás seguro de eliminar el grupo <b>${grupo.nombre}</b>?`,
       header: 'Confirmar eliminación', icon: 'pi pi-trash',
       acceptLabel: 'Eliminar', rejectLabel: 'Cancelar',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
-        this.grupos = this.grupos.filter(g => g.id !== grupo.id);
-        this.messageService.add({ severity: 'warn', summary: 'Eliminado', detail: `Grupo ${grupo.nombre} eliminado` });
+        this.gruposService.eliminarGrupo(grupo.id).subscribe({
+          next: () => {
+            this.grupos = this.grupos.filter(g => g.id !== grupo.id);
+            this.messageService.add({ severity: 'warn', summary: 'Eliminado', detail: `Grupo "${grupo.nombre}" eliminado` });
+          },
+          error: (err) => {
+            this.messageService.add({ severity: 'error', summary: 'Error', detail: err.error?.data?.error ?? 'No se pudo eliminar el grupo' });
+          }
+        });
       }
     });
+  }
+
+  // ── Helpers de UI ───────────────────────────────────────────────────────────
+
+  getAvatarColor(id: string): string {
+    const num = parseInt(id.replace(/-/g, '').substring(0, 8), 16);
+    return this.avatarColors[num % this.avatarColors.length];
+  }
+
+  getNombreCreador(grupo: any): string {
+    return grupo.usuarios?.nombre_completo ?? grupo.usuarios?.username ?? 'Sin autor';
+  }
+
+  getTotalTickets(): number {
+    return this.grupos.reduce((acc, g) => acc + (g._totalTickets ?? 0), 0);
+  }
+
+  formVacio() {
+    return { nombre: '', descripcion: '' };
   }
 }

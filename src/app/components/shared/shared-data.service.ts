@@ -1,70 +1,113 @@
 import { Injectable } from '@angular/core';
-
-// ── Permisos disponibles en el sistema ────────────────────────────────────────
-export const TODOS_LOS_PERMISOS = [
-  // Tickets
-  { clave: 'ticket:view',    label: 'Ver tickets',       grupo: 'Tickets' },
-  { clave: 'ticket:create',  label: 'Crear tickets',     grupo: 'Tickets' },
-  { clave: 'ticket:edit',    label: 'Editar tickets',    grupo: 'Tickets' },
-  { clave: 'ticket:delete',  label: 'Eliminar tickets',  grupo: 'Tickets' },
-  { clave: 'ticket:assign',  label: 'Asignar tickets',   grupo: 'Tickets' },
-  // Grupo
-  { clave: 'group:view',     label: 'Ver grupo',         grupo: 'Grupo' },
-  { clave: 'group:edit',     label: 'Editar grupo',      grupo: 'Grupo' },
-  { clave: 'group:add',      label: 'Agregar miembros',  grupo: 'Grupo' },
-  { clave: 'group:delete',   label: 'Eliminar miembros', grupo: 'Grupo' },
-  // Admin
-  { clave: 'admin:users',    label: 'Gestionar usuarios',grupo: 'Admin' },
-  { clave: 'admin:perms',    label: 'Gestionar permisos',grupo: 'Admin' },
-];
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface Usuario {
-  id: number;
-  nombre: string;
-  email: string;
-  activo: boolean;
-  permisos: string[];   // lista de claves de permiso
-  fechaCreacion: string;
+  id:                string;
+  nombre_completo:   string;
+  username:          string;
+  email:             string;
+  direccion:         string;
+  telefono:          string;
+  fecha_inicio:      string;
+  last_login:        string | null;
+  permisos_globales: string[];   // UUIDs de permisos
+  creado_en:         string;
+  permisosNombres:   string[];   // nombres legibles ['ticket:view', 'superadmin', ...]
 }
 
-// Datos compartidos entre componentes (simulación de store/servicio)
+export interface Permiso {
+  id:          string;
+  nombre:      string;
+  descripcion: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SharedDataService {
 
-  usuarios: Usuario[] = [
+  private supabase: SupabaseClient = createClient(
+    'https://dgmgngfrespeheuzrpso.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbWduZ2ZyZXNwZWhldXpycHNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMDk2MzMsImV4cCI6MjA4OTg4NTYzM30.fUqQzetG3ZREKVTPQNmv2BzjwFoL3No5gf8qk-0rKuQ',
     {
-      id: 1, nombre: 'Brisa', email: 'brisa@mail.com', activo: true,
-      fechaCreacion: '2025-01-01',
-      permisos: ['ticket:view','ticket:edit','ticket:delete','ticket:assign', 'ticket:create',
-                 'group:view','group:edit','group:add','group:delete','admin:users','admin:perms'],
-    },
-    {
-      id: 2, nombre: 'Jonathan', email: 'jonathan@mail.com', activo: true,
-      fechaCreacion: '2025-01-03',
-      permisos: ['ticket:view','ticket:create','ticket:edit','ticket:assign','group:view',
-        //'group:edit','group:add'
-      ],
-    },
-    {
-      id: 3, nombre: 'Ana', email: 'ana@mail.com', activo: false,
-      fechaCreacion: '2025-01-05',
-      permisos: ['ticket:view','group:view'],
-    },
-    {
-      id: 4, nombre: 'Carlos', email: 'carlos@mail.com', activo: true,
-      fechaCreacion: '2025-01-10',
-      permisos: ['ticket:view','ticket:create','group:view'],
-    },
-  ];
+      auth: {
+        lock: async (name, acquireTimeout, fn) => fn()  // evita navigator.locks
+      }
+    }
+  );
 
-  // Usuario activo actual (simulado)
-  usuarioActivoNombre = 'Brisa';
+  usuarioActual: Usuario | null = null;
+  todosLosPermisos: Permiso[]   = [];
 
-  get usuarioActivo(): Usuario {
-    return this.usuarios.find(u => u.nombre === this.usuarioActivoNombre)!;
+  // Para saber si ya terminó de inicializar (útil en el guard)
+  private _listo = false;
+  private _inicializando: Promise<void> | null = null;
+
+  // ── Punto de entrada único ─────────────────────────────────────────────────
+  // Llama esto una sola vez (AppComponent.ngOnInit).
+  // Si se llama más de una vez, devuelve la misma Promise.
+  inicializar(): Promise<void> {
+    if (this._inicializando) return this._inicializando;
+    this._inicializando = this._doInicializar();
+    return this._inicializando;
   }
 
-  tienePerm(clave: string): boolean {
-    return this.usuarioActivo?.permisos.includes(clave) ?? false;
+  private async _doInicializar(): Promise<void> {
+  // ✅ Siempre recargar el catálogo fresco al inicializar
+    await this.cargarCatalogoPermisos(true);
+
+    const raw = localStorage.getItem('erp_usuario');
+    if (!raw) { this._listo = true; return; }
+
+    let base: { id: string };
+    try { base = JSON.parse(raw); } catch { this._listo = true; return; }
+
+    const { data, error } = await this.supabase
+      .from('usuarios')
+      .select('*')
+      .eq('id', base.id)
+      .single();
+
+    if (!error && data) {
+      this.usuarioActual = {
+        ...data,
+        permisosNombres: this._resolverNombres(data.permisos_globales ?? []),
+      };
+    }
+
+    this._listo = true;
+  }
+
+  // Espera a que inicializar() haya terminado (lo usa el guard)
+  esperarListo(): Promise<void> {
+    if (this._listo) return Promise.resolve();
+    // Si todavía no arrancó (raro), arranca ahora
+    return this.inicializar();
+  }
+
+    async cargarCatalogoPermisos(forzar = false): Promise<void> {
+      // ✅ Acepta parámetro para saltarse el cache
+      if (!forzar && this.todosLosPermisos.length > 0) return;
+      const { data } = await this.supabase.from('permisos').select('*');
+      this.todosLosPermisos = data ?? [];
+    }
+
+  private _resolverNombres(uuids: string[]): string[] {
+    return this.todosLosPermisos
+      .filter(p => uuids.includes(p.id))
+      .map(p => p.nombre);
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  tienePerm(nombre: string): boolean {
+  console.log('usuarioActual:', this.usuarioActual);
+  console.log('permisosNombres:', this.usuarioActual?.permisosNombres);
+  return this.usuarioActual?.permisosNombres?.includes(nombre) ?? false;
+}
+
+  get usuarioActivoNombre(): string {
+    return this.usuarioActual?.nombre_completo ?? '';
+  }
+
+  get db(): SupabaseClient {
+    return this.supabase;
   }
 }

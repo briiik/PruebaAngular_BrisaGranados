@@ -1,42 +1,32 @@
-<!-- Navbar (incluye slidebar) -->
 <app-navbar titulo="Dashboard"></app-navbar>
 
 <div class="page-wrapper">
 
-  <!-- Header -->
   <div class="page-header">
     <p-button icon="pi pi-arrow-left" label="Volver" severity="secondary" (onClick)="volver()"></p-button>
   </div>
 
-  <!-- Info del grupo + selector de usuario demo -->
-  <div class="grupo-info-header">
-    <p-avatar [label]="grupo?.nombre?.charAt(0)" shape="circle" size="xlarge"
-      [style]="{ 'background-color': avatarColor, 'color': '#fff' }">
+  <!-- Info del grupo -->
+  <div class="grupo-info-header" *ngIf="grupoActual">
+    <p-avatar [label]="grupoActual?.nombre?.charAt(0)" shape="circle" size="xlarge"
+      [style]="{ 'background-color': getAvatarColor(0), 'color': '#fff' }">
     </p-avatar>
     <div class="grupo-info-texto">
-      <h2 class="grupo-nombre">{{ grupo?.nombre }}</h2>
-      <p class="grupo-descripcion">{{ grupo?.descripcion }}</p>
-      <div class="grupo-tags">
-        <p-tag [value]="grupo?.nivel || ''" [severity]="getNivelSeverity(grupo?.nivel || '')"></p-tag>
-        <p-tag value="Activo" severity="success"></p-tag>
-        <p-tag [value]="'Autor: ' + grupo?.autor" severity="secondary"></p-tag>
-      </div>
+      <h2 class="grupo-nombre">{{ grupoActual?.nombre }}</h2>
+      <p class="grupo-descripcion">{{ grupoActual?.descripcion }}</p>
     </div>
 
-    <!-- Selector usuario demo -->
-    <div class="usuario-demo-selector">
-      <span class="usuario-demo-label">Usuario activo (demo):</span>
+    <!-- Selector de grupo si hay varios -->
+    <div *ngIf="grupos.length > 1" class="usuario-demo-selector">
+      <span class="usuario-demo-label">Grupo:</span>
       <p-select
-        [(ngModel)]="shared.usuarioActivoNombre"
-        [options]="shared.usuarios"
+        [(ngModel)]="grupoActual"
+        [options]="grupos"
         optionLabel="nombre"
-        optionValue="nombre"
-        placeholder="Cambiar usuario"
+        (onChange)="seleccionarGrupo($event.value)"
+        placeholder="Cambiar grupo"
         style="width: 200px;">
       </p-select>
-      <p-tag
-        [pTooltip]="'Permisos: ' + (shared.usuarioActivo.permisos?.length ?? 0)"        severity="info">
-      </p-tag>
     </div>
   </div>
 
@@ -51,56 +41,30 @@
     </div>
     <div class="metricas-right">
       <div class="metricas-grid">
-        <div class="flex-1" style="min-width: 110px;">
+        <div class="flex-1" style="min-width:110px;">
           <p-card header="Total" styleClass="stat-card">
             <p class="stat-number">{{ tickets.length }}</p>
             <p-tag value="Tickets" severity="secondary"></p-tag>
           </p-card>
         </div>
-        <div class="flex-1" style="min-width: 110px;">
-          <p-card header="Pendientes" styleClass="stat-card">
-            <p class="stat-number">{{ contarPorEstado('Pendiente') }}</p>
-            <p-tag value="Pendiente" severity="warn"></p-tag>
-          </p-card>
-        </div>
-        <div class="flex-1" style="min-width: 110px;">
-          <p-card header="En Progreso" styleClass="stat-card">
-            <p class="stat-number">{{ contarPorEstado('En Progreso') }}</p>
-            <p-tag value="En Progreso" severity="info"></p-tag>
-          </p-card>
-        </div>
-        <div class="flex-1" style="min-width: 110px;">
-          <p-card header="Revisión" styleClass="stat-card">
-            <p class="stat-number">{{ contarPorEstado('En Revisión') }}</p>
-            <p-tag value="En Revisión" severity="secondary"></p-tag>
-          </p-card>
-        </div>
-        <div class="flex-1" style="min-width: 110px;">
-          <p-card header="Finalizados" styleClass="stat-card">
-            <p class="stat-number">{{ contarPorEstado('Finalizado') }}</p>
-            <p-tag value="Finalizado" severity="success"></p-tag>
+        <div *ngFor="let estado of estados" class="flex-1" style="min-width:110px;">
+          <p-card [header]="estado.nombre" styleClass="stat-card">
+            <p class="stat-number">{{ contarPorEstado(estado.id) }}</p>
+            <p-tag [value]="estado.nombre" [severity]="getEstadoSeverity(estado.nombre)"></p-tag>
           </p-card>
         </div>
       </div>
       <p-panel header="Distribución por prioridad" [toggleable]="true">
         <div class="prioridad-lista">
-          <div>
+          <div *ngFor="let p of prioridades">
             <div class="prioridad-row">
-              <span>Alta</span><span>{{ contarPorPrioridad('Alta') }}</span>
+              <span>{{ p.nombre }}</span><span>{{ contarPorPrioridad(p.id) }}</span>
             </div>
-            <p-progressbar [value]="porcentajePrioridad('Alta')" severity="danger" [showValue]="false"></p-progressbar>
-          </div>
-          <div>
-            <div class="prioridad-row">
-              <span>Media</span><span>{{ contarPorPrioridad('Media') }}</span>
-            </div>
-            <p-progressbar [value]="porcentajePrioridad('Media')" severity="warn" [showValue]="false"></p-progressbar>
-          </div>
-          <div>
-            <div class="prioridad-row">
-              <span>Baja</span><span>{{ contarPorPrioridad('Baja') }}</span>
-            </div>
-            <p-progressbar [value]="porcentajePrioridad('Baja')" severity="info" [showValue]="false"></p-progressbar>
+            <p-progressbar 
+              [value]="porcentajePrioridad(p.id)"
+              [showValue]="false"
+              [styleClass]="'prioridad-bar-' + p.nombre.toLowerCase()">
+            </p-progressbar>
           </div>
         </div>
       </p-panel>
@@ -111,66 +75,65 @@
     <span class="seccion-label">Tickets del grupo</span>
   </p-divider>
 
-  <!-- Mensaje si no tiene ticket:view -->
-  <p-message
-    *ngIf="!shared.tienePerm('ticket:view')"
-    severity="warn"
-    text="No tienes permisos para ver los tickets de este grupo."
+  <p-message *ngIf="!tienePerm('ticket:view')"
+    severity="warn" text="No tienes permisos para ver los tickets de este grupo."
     styleClass="w-full">
   </p-message>
 
-  <!-- Todo lo de tickets envuelto en el permiso -->
-  <div *ngIf="shared.tienePerm('ticket:view')">
+  <div *ngIf="tienePerm('ticket:view')">
 
     <!-- Toolbar -->
     <p-toolbar styleClass="mb-3">
       <ng-template pTemplate="start">
         <div class="toolbar-vista">
           <span class="font-semibold">Vista:</span>
-          <p-selectButton [(ngModel)]="vistaActual" [options]="vistaOptions" optionLabel="label" optionValue="value"></p-selectButton>
+          <p-selectButton [(ngModel)]="vistaActual" [options]="vistaOptions"
+            optionLabel="label" optionValue="value">
+          </p-selectButton>
         </div>
       </ng-template>
       <ng-template pTemplate="center">
         <div class="toolbar-filtros">
-          <p-select [(ngModel)]="filtroEstado" [options]="estadoOptions" optionLabel="label" optionValue="value"
-            placeholder="Filtrar estado" [showClear]="true" (onChange)="aplicarFiltros()" style="min-width: 150px;">
+          <p-select [(ngModel)]="filtroEstado" [options]="estadoOptions"
+            optionLabel="label" optionValue="value"
+            placeholder="Filtrar estado" [showClear]="true"
+            (onChange)="aplicarFiltros()" style="min-width:150px;">
           </p-select>
-          <p-select [(ngModel)]="filtroPrioridad" [options]="prioridadOptions" optionLabel="label" optionValue="value"
-            placeholder="Filtrar prioridad" [showClear]="true" (onChange)="aplicarFiltros()" style="min-width: 150px;">
+          <p-select [(ngModel)]="filtroPrioridad" [options]="prioridadOptions"
+            optionLabel="label" optionValue="value"
+            placeholder="Filtrar prioridad" [showClear]="true"
+            (onChange)="aplicarFiltros()" style="min-width:150px;">
           </p-select>
         </div>
       </ng-template>
       <ng-template pTemplate="end">
         <div class="toolbar-acciones">
-          <p-button
-            *ngIf="shared.tienePerm('group:edit')"
-            label="Gestionar grupo"
-            icon="pi pi-cog"
-            severity="warn"
-            pTooltip="Miembros y configuración del grupo"
+          <p-button *ngIf="tienePerm('group:manage')"
+            label="Gestionar grupo" icon="pi pi-cog" severity="warn"
             (onClick)="irAGestion()">
           </p-button>
-          <p-button
-            *ngIf="shared.tienePerm('ticket:create')"
-            label="Nuevo Ticket"
-            icon="pi pi-plus"
-            severity="success"
+          <p-button *ngIf="tienePerm('ticket:create')"
+            label="Nuevo Ticket" icon="pi pi-plus" severity="success"
             (onClick)="abrirModalNuevoTicket()">
           </p-button>
         </div>
       </ng-template>
     </p-toolbar>
 
+    <!-- Skeleton carga -->
+    <div *ngIf="cargandoTickets">
+      <p-skeleton height="40px" styleClass="mb-2" *ngFor="let i of [1,2,3,4]"></p-skeleton>
+    </div>
+
     <!-- ======= VISTA TABLA ======= -->
-    <div *ngIf="vistaActual === 'tabla'">
+    <div *ngIf="!cargandoTickets && vistaActual === 'tabla'">
       <p-table
         [value]="ticketsFiltrados"
-        [paginator]="true"
-        [rows]="8"
+        [paginator]="true" [rows]="8"
         [rowsPerPageOptions]="[5,8,15,30]"
         [sortMode]="'multiple'"
         styleClass="p-datatable-sm p-datatable-gridlines"
-        [globalFilterFields]="['titulo','asignadoA','estado','prioridad']"
+        [globalFilterFields]="['titulo','asignado.nombre_completo','estados.nombre','prioridades.nombre']"
         #dt>
 
         <ng-template pTemplate="caption">
@@ -188,31 +151,11 @@
           <tr>
             <th pSortableColumn="titulo" style="min-width:160px;">Título <p-sortIcon field="titulo"></p-sortIcon></th>
             <th style="min-width:200px;">Descripción</th>
-            <th pSortableColumn="estado" style="min-width:140px;">
-              Estado <p-sortIcon field="estado"></p-sortIcon>
-              <p-columnFilter field="estado" matchMode="equals" display="menu">
-                <ng-template pTemplate="filter" let-value let-filter="filterCallback">
-                  <p-select [ngModel]="value" (ngModelChange)="filter($event)"
-                    [options]="estadoOptions" optionLabel="label" optionValue="value"
-                    placeholder="Todos" [showClear]="true" style="width:100%;">
-                  </p-select>
-                </ng-template>
-              </p-columnFilter>
-            </th>
-            <th pSortableColumn="asignadoA" style="min-width:130px;">Asignado <p-sortIcon field="asignadoA"></p-sortIcon></th>
-            <th pSortableColumn="prioridad" style="min-width:120px;">
-              Prioridad <p-sortIcon field="prioridad"></p-sortIcon>
-              <p-columnFilter field="prioridad" matchMode="equals" display="menu">
-                <ng-template pTemplate="filter" let-value let-filter="filterCallback">
-                  <p-select [ngModel]="value" (ngModelChange)="filter($event)"
-                    [options]="prioridadOptions" optionLabel="label" optionValue="value"
-                    placeholder="Todas" [showClear]="true" style="width:100%;">
-                  </p-select>
-                </ng-template>
-              </p-columnFilter>
-            </th>
-            <th pSortableColumn="fechaCreacion" style="min-width:120px;">Creación <p-sortIcon field="fechaCreacion"></p-sortIcon></th>
-            <th pSortableColumn="fechaLimite" style="min-width:120px;">Límite <p-sortIcon field="fechaLimite"></p-sortIcon></th>
+            <th style="min-width:140px;">Estado</th>
+            <th style="min-width:130px;">Asignado</th>
+            <th style="min-width:120px;">Prioridad</th>
+            <th pSortableColumn="creado_en" style="min-width:120px;">Creación <p-sortIcon field="creado_en"></p-sortIcon></th>
+            <th pSortableColumn="fecha_final" style="min-width:120px;">Límite <p-sortIcon field="fecha_final"></p-sortIcon></th>
             <th style="min-width:110px;">Acciones</th>
           </tr>
         </ng-template>
@@ -223,23 +166,32 @@
               <span class="ticket-link" (click)="abrirModalDetalle(ticket)">{{ ticket.titulo }}</span>
             </td>
             <td>
-              <span pTooltip="{{ ticket.descripcion }}" tooltipPosition="top" class="descripcion-truncada">
+              <span [pTooltip]="ticket.descripcion" tooltipPosition="top" class="descripcion-truncada">
                 {{ ticket.descripcion }}
               </span>
             </td>
-            <td><p-tag [value]="ticket.estado" [severity]="getEstadoSeverity(ticket.estado)"></p-tag></td>
             <td>
-              <div class="asignado-cell">
-                <p-avatar [label]="ticket.asignadoA.charAt(0)" shape="circle" size="normal"></p-avatar>
-                {{ ticket.asignadoA }}
-              </div>
+              <p-tag [value]="ticket.estados?.nombre ?? '—'"
+                [severity]="getEstadoSeverity(ticket.estados?.nombre ?? '')">
+              </p-tag>
             </td>
-            <td><p-tag [value]="ticket.prioridad" [severity]="getPrioridadSeverity(ticket.prioridad)"></p-tag></td>
-            <td>{{ ticket.fechaCreacion }}</td>
             <td>
-              <span [class.fecha-vencida]="esVencido(ticket.fechaLimite)">
-                {{ ticket.fechaLimite }}
-                <i *ngIf="esVencido(ticket.fechaLimite)" class="pi pi-exclamation-triangle ml-1"></i>
+              <div class="asignado-cell" *ngIf="ticket.asignado">
+                <p-avatar [label]="ticket.asignado.nombre_completo?.charAt(0)" shape="circle" size="normal"></p-avatar>
+                {{ ticket.asignado.nombre_completo ?? ticket.asignado.username }}
+              </div>
+              <span *ngIf="!ticket.asignado" class="text-color-secondary">Sin asignar</span>
+            </td>
+            <td>
+              <p-tag [value]="ticket.prioridades?.nombre ?? '—'"
+                [severity]="getPrioridadSeverity(ticket.prioridades?.nombre ?? '')">
+              </p-tag>
+            </td>
+            <td>{{ ticket.creado_en | date:'dd/MM/yyyy' }}</td>
+            <td>
+              <span [class.fecha-vencida]="esVencido(ticket.fecha_final)">
+                {{ ticket.fecha_final ? (ticket.fecha_final | date:'dd/MM/yyyy') : '—' }}
+                <i *ngIf="esVencido(ticket.fecha_final)" class="pi pi-exclamation-triangle ml-1"></i>
               </span>
             </td>
             <td>
@@ -247,8 +199,7 @@
                 <p-button icon="pi pi-eye" severity="info" pTooltip="Ver"
                   (onClick)="abrirModalDetalle(ticket)">
                 </p-button>
-                <p-button
-                  *ngIf="shared.tienePerm('ticket:delete')"
+                <p-button *ngIf="puedeEliminarTicket(ticket)"
                   icon="pi pi-trash" severity="danger" pTooltip="Eliminar"
                   (onClick)="confirmarEliminar(ticket)" class="ml-1">
                 </p-button>
@@ -264,17 +215,17 @@
     </div>
 
     <!-- ======= VISTA KANBAN ======= -->
-    <div *ngIf="vistaActual === 'kanban'" class="kanban-board">
+    <div *ngIf="!cargandoTickets && vistaActual === 'kanban'" class="kanban-board">
       <div *ngFor="let columna of kanbanColumnas" class="kanban-col"
         (dragover)="onDragOver($event)"
-        (drop)="onDrop($event, columna.estado)">
+        (drop)="onDrop($event, columna.id)">
 
         <div class="kanban-col-header">
           <p-tag [value]="columna.estado" [severity]="getEstadoSeverity(columna.estado)"></p-tag>
-          <p-badge [value]="getTicketsPorEstado(columna.estado).length.toString()" severity="secondary"></p-badge>
+          <p-badge [value]="getTicketsPorEstado(columna.id).length.toString()" severity="secondary"></p-badge>
         </div>
 
-        <div *ngFor="let ticket of getTicketsPorEstado(columna.estado)"
+        <div *ngFor="let ticket of getTicketsPorEstado(columna.id)"
           class="kanban-ticket-card"
           draggable="true"
           (dragstart)="onDragStart($event, ticket)"
@@ -282,25 +233,26 @@
           <p-card styleClass="kanban-card-inner">
             <div class="kanban-ticket-body">
               <div class="kanban-ticket-top">
-                <p-tag [value]="ticket.prioridad" [severity]="getPrioridadSeverity(ticket.prioridad)"></p-tag>
+                <p-tag [value]="ticket.prioridades?.nombre ?? '—'"
+                  [severity]="getPrioridadSeverity(ticket.prioridades?.nombre ?? '')">
+                </p-tag>
                 <i class="pi pi-arrows-alt text-color-secondary" pTooltip="Arrastrar"></i>
               </div>
               <p class="kanban-ticket-title">{{ ticket.titulo }}</p>
               <div class="kanban-ticket-footer">
-                <div class="kanban-asignado">
-                  <p-avatar [label]="ticket.asignadoA.charAt(0)" shape="circle" size="normal"></p-avatar>
-                  <span class="kanban-asignado-nombre">{{ ticket.asignadoA }}</span>
+                <div class="kanban-asignado" *ngIf="ticket.asignado">
+                  <p-avatar [label]="ticket.asignado.nombre_completo?.charAt(0)" shape="circle" size="normal"></p-avatar>
+                  <span class="kanban-asignado-nombre">{{ ticket.asignado.nombre_completo }}</span>
                 </div>
-                <span class="kanban-fecha">
-                  <i class="pi pi-calendar"></i> {{ ticket.fechaLimite }}
+                <span class="kanban-fecha" *ngIf="ticket.fecha_final">
+                  <i class="pi pi-calendar"></i> {{ ticket.fecha_final | date:'dd/MM/yy' }}
                 </span>
               </div>
-              <p-tag [value]="ticket.estado" [severity]="getEstadoSeverity(ticket.estado)" class="kanban-estado-tag"></p-tag>
             </div>
           </p-card>
         </div>
 
-        <div *ngIf="getTicketsPorEstado(columna.estado).length === 0" class="kanban-empty">
+        <div *ngIf="getTicketsPorEstado(columna.id).length === 0" class="kanban-empty">
           <i class="pi pi-inbox kanban-empty-icon"></i>
           <p class="kanban-empty-text">Sin tickets</p>
         </div>
@@ -308,17 +260,13 @@
     </div>
 
   </div>
-  <!-- fin *ngIf ticket:view -->
-
 </div>
 
-<!-- ====== MODAL DETALLE / EDITAR TICKET ====== -->
+<!-- ====== MODAL DETALLE ====== -->
 <p-dialog
-  [header]="ticketSeleccionado ? ticketSeleccionado.titulo : 'Ticket'"
+  [header]="ticketSeleccionado?.titulo ?? 'Ticket'"
   [(visible)]="modalDetalleVisible"
-  [modal]="true"
-  [draggable]="false"
-  [resizable]="false"
+  [modal]="true" [draggable]="false" [resizable]="false"
   [style]="{ width: '780px', maxWidth: '95vw' }"
   [maximizable]="true">
 
@@ -337,7 +285,7 @@
 
     <p-tabpanels>
 
-      <!-- Tab Detalles -->
+      <!-- Detalles -->
       <p-tabpanel value="0">
         <div class="modal-form">
           <div class="form-campo">
@@ -353,31 +301,32 @@
           <div class="form-doble">
             <div class="form-campo">
               <label class="form-label">Estado</label>
-              <p-select [(ngModel)]="formEdicion.estado" [options]="estadoOptions"
+              <p-select [(ngModel)]="formEdicion.estado_id" [options]="estadoOptions"
                 optionLabel="label" optionValue="value" styleClass="form-input"
-                [disabled]="!puedeEditarCampo('estado')" appendTo="body">
+                [disabled]="!puedeEditarCampo('estado_id')" appendTo="body">
               </p-select>
             </div>
             <div class="form-campo">
               <label class="form-label">Prioridad</label>
-              <p-select [(ngModel)]="formEdicion.prioridad" [options]="prioridadOptions"
+              <p-select [(ngModel)]="formEdicion.prioridad_id" [options]="prioridadOptions"
                 optionLabel="label" optionValue="value" styleClass="form-input"
-                [disabled]="!puedeEditarCampo('prioridad')" appendTo="body">
+                [disabled]="!puedeEditarCampo('prioridad_id')" appendTo="body">
               </p-select>
             </div>
           </div>
           <div class="form-doble">
-            <div class="form-campo">
+            <div class="form-campo" *ngIf="puedeAsignarTicket(ticketSeleccionado)">
               <label class="form-label">Asignado a</label>
-              <p-select [(ngModel)]="formEdicion.asignadoA" [options]="integrantes"
-                optionLabel="nombre" optionValue="nombre" styleClass="form-input"
-                [disabled]="!puedeEditarCampo('asignadoA')" appendTo="body">
+              <p-select [(ngModel)]="formEdicion.asignado_id" [options]="miembros"
+                [optionLabel]="'usuarios.nombre_completo'" optionValue="usuarios.id"
+                styleClass="form-input"
+                [disabled]="!puedeAsignarTicket(ticketSeleccionado)" appendTo="body">
               </p-select>
             </div>
             <div class="form-campo">
               <label class="form-label">Fecha límite</label>
               <p-datepicker [(ngModel)]="formEdicion.fechaLimiteDate" dateFormat="yy-mm-dd"
-                styleClass="form-input" [disabled]="!puedeEditarCampo('fechaLimite')"
+                styleClass="form-input" [disabled]="!puedeEditarCampo('fecha_final')"
                 [showIcon]="true" appendTo="body">
               </p-datepicker>
             </div>
@@ -385,30 +334,27 @@
 
           <p-panel header="Información del ticket" [toggleable]="true" [collapsed]="true">
             <div class="ticket-info-grid">
-              <div><strong>Creado por:</strong> {{ ticketSeleccionado?.creadoPor }}</div>
-              <div><strong>Fecha creación:</strong> {{ ticketSeleccionado?.fechaCreacion }}</div>
+              <div><strong>Creado por:</strong> {{ ticketSeleccionado?.autor?.nombre_completo ?? '—' }}</div>
+              <div><strong>Fecha creación:</strong> {{ ticketSeleccionado?.creado_en | date:'dd/MM/yyyy' }}</div>
             </div>
           </p-panel>
 
-          <p-message
-            *ngIf="shared.tienePerm('ticket:edit')"
+          <p-message *ngIf="tienePerm('ticket:edit') || esAutorTicket(ticketSeleccionado)"
             severity="info"
             text="Tienes acceso completo para editar este ticket.">
           </p-message>
           <p-message
-            *ngIf="!shared.tienePerm('ticket:edit') && ticketSeleccionado && esAsignado(ticketSeleccionado)"
-            severity="warn"
-            text="Eres el asignado: solo puedes cambiar el estado y comentar.">
+            *ngIf="!tienePerm('ticket:edit') && !esAutorTicket(ticketSeleccionado) && esAsignadoTicket(ticketSeleccionado)"
+            severity="warn" text="Eres el asignado: solo puedes cambiar el estado y comentar.">
           </p-message>
           <p-message
-            *ngIf="!shared.tienePerm('ticket:edit') && ticketSeleccionado && !esAsignado(ticketSeleccionado)"
-            severity="secondary"
-            text="Modo solo lectura. No tienes permisos para editar este ticket.">
+            *ngIf="!tienePerm('ticket:edit') && !esAutorTicket(ticketSeleccionado) && !esAsignadoTicket(ticketSeleccionado)"
+            severity="secondary" text="Modo solo lectura.">
           </p-message>
         </div>
       </p-tabpanel>
 
-      <!-- Tab Comentarios -->
+      <!-- Comentarios -->
       <p-tabpanel value="1">
         <div class="modal-form">
           <div *ngIf="(ticketSeleccionado?.comentarios?.length ?? 0) === 0" class="comentarios-empty">
@@ -416,14 +362,14 @@
             <p>Sin comentarios aún.</p>
           </div>
           <div *ngFor="let c of ticketSeleccionado?.comentarios" class="comentario-item">
-            <p-avatar [label]="c.autor.charAt(0)" shape="circle" size="normal"></p-avatar>
+            <p-avatar [label]="c.autor?.nombre_completo?.charAt(0) ?? '?'" shape="circle" size="normal"></p-avatar>
             <div class="flex-1">
               <p-card>
                 <div class="comentario-header">
-                  <strong>{{ c.autor }}</strong>
-                  <small class="text-color-secondary">{{ c.fecha }}</small>
+                  <strong>{{ c.autor?.nombre_completo ?? c.autor?.username }}</strong>
+                  <small class="text-color-secondary">{{ c.creado_en | date:'dd/MM/yyyy HH:mm' }}</small>
                 </div>
-                <p class="m-0">{{ c.texto }}</p>
+                <p class="m-0">{{ c.contenido }}</p>
               </p-card>
             </div>
           </div>
@@ -438,32 +384,32 @@
               <p-button label="Enviar" icon="pi pi-send" (onClick)="agregarComentario()"></p-button>
             </div>
           </div>
-          <p-message
-            *ngIf="ticketSeleccionado && !puedeComentarEnTicket(ticketSeleccionado)"
-            severity="secondary"
-            text="No tienes permisos para comentar en este ticket.">
+          <p-message *ngIf="ticketSeleccionado && !puedeComentarEnTicket(ticketSeleccionado)"
+            severity="secondary" text="No tienes permisos para comentar en este ticket.">
           </p-message>
         </div>
       </p-tabpanel>
 
-      <!-- Tab Historial -->
+      <!-- Historial -->
       <p-tabpanel value="2">
         <div class="pt-2">
-          <p-message *ngIf="(ticketSeleccionado?.historial?.length ?? 0) === 0"
+          <p-message *ngIf="(ticketSeleccionado?.historial_tickets?.length ?? 0) === 0"
             severity="secondary" text="Sin historial de cambios aún.">
           </p-message>
-          <p-timeline *ngIf="(ticketSeleccionado?.historial?.length ?? 0) > 0"
-            [value]="ticketSeleccionado!.historial" align="left">
+          <p-timeline *ngIf="(ticketSeleccionado?.historial_tickets?.length ?? 0) > 0"
+            [value]="ticketSeleccionado!.historial_tickets" align="left">
             <ng-template pTemplate="marker" let-event>
-              <span class="p-timeline-event-marker" [style]="{ 'background-color': event.color }">
-                <i [class]="event.icon"></i>
+              <span class="p-timeline-event-marker" style="background-color: #3B82F6">
+                <i class="pi pi-clock"></i>
               </span>
             </ng-template>
             <ng-template pTemplate="content" let-event>
               <div class="historial-item">
                 <p class="historial-accion">{{ event.accion }}</p>
-                <p class="historial-desc">{{ event.descripcion }}</p>
-                <small class="text-color-secondary">{{ event.autor }} &mdash; {{ event.fecha }}</small>
+                <p class="historial-desc">{{ event.detalles | json }}</p>
+                <small class="text-color-secondary">
+                  {{ event.usuarios?.nombre_completo }} &mdash; {{ event.creado_en | date:'dd/MM/yyyy HH:mm' }}
+                </small>
               </div>
             </ng-template>
             <ng-template pTemplate="opposite"><small></small></ng-template>
@@ -495,33 +441,31 @@
     <div class="form-campo">
       <label class="form-label">Descripción</label>
       <textarea pTextarea [(ngModel)]="formNuevo.descripcion" rows="3" class="form-input"
-        placeholder="Descripción detallada del ticket..."></textarea>
+        placeholder="Descripción detallada..."></textarea>
     </div>
     <div class="form-doble">
       <div class="form-campo">
         <label class="form-label">Estado inicial</label>
-        <p-select [(ngModel)]="formNuevo.estado" [options]="estadoOptions"
+        <p-select [(ngModel)]="formNuevo.estado_id" [options]="estadoOptions"
           optionLabel="label" optionValue="value" styleClass="form-input" appendTo="body">
         </p-select>
       </div>
       <div class="form-campo">
         <label class="form-label">Prioridad</label>
-        <p-select [(ngModel)]="formNuevo.prioridad" [options]="prioridadOptions"
+        <p-select [(ngModel)]="formNuevo.prioridad_id" [options]="prioridadOptions"
           optionLabel="label" optionValue="value" styleClass="form-input" appendTo="body">
         </p-select>
       </div>
     </div>
     <div class="form-doble">
-
-      <!-- Solo aparece si tiene ticket:assign -->
-      <div class="form-campo" *ngIf="shared.tienePerm('ticket:assign')">
-        <label class="form-label">Asignar a</label>
-        <p-select [(ngModel)]="formNuevo.asignadoA" [options]="integrantes"
-          optionLabel="nombre" optionValue="nombre" placeholder="Selecciona integrante"
+        <div class="form-campo" *ngIf="tienePerm('ticket:assign') || tienePerm('ticket:create')">
+          <label class="form-label">Asignar a</label>
+        <p-select [(ngModel)]="formNuevo.asignado_id" [options]="miembros"
+          [optionLabel]="'usuarios.nombre_completo'" optionValue="usuarios.id"
+          placeholder="Selecciona integrante"
           styleClass="form-input" [showClear]="true" appendTo="body">
         </p-select>
       </div>
-
       <div class="form-campo">
         <label class="form-label">Fecha límite</label>
         <p-datepicker [(ngModel)]="formNuevo.fechaLimiteDate" dateFormat="yy-mm-dd"

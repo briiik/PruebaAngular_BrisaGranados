@@ -1,405 +1,397 @@
-<!-- Navbar (incluye slidebar) -->
+<!-- Navbar -->
 <app-navbar titulo="Gestión de Grupo"></app-navbar>
 
 <div class="page-wrapper">
 
-  <!-- Header -->
   <div class="page-header">
     <p-button icon="pi pi-arrow-left" label="Volver" severity="secondary" (onClick)="volver()"></p-button>
   </div>
 
-  <!-- Sin permisos -->
-  <p-message *ngIf="!puedeVerGestion()"
-    severity="error"
-    text="No tienes permisos para acceder a la gestión del grupo."
-    styleClass="w-full">
-  </p-message>
+  <p-tabs [value]="'0'">
+    <p-tablist>
+      <p-tab value="0"><i class="pi pi-users mr-1"></i>Miembros del grupo</p-tab>
+      <p-tab value="1" *ngIf="tienePerm('group:edit')">
+        <i class="pi pi-cog mr-1"></i>Configuración
+      </p-tab>
+    </p-tablist>
 
-  <div *ngIf="puedeVerGestion()">
+    <p-tabpanels>
 
-    <!-- Selector usuario demo -->
-    <div class="demo-selector">
-      <span class="demo-label">Usuario activo (demo):</span>
-      <p-select [(ngModel)]="shared.usuarioActivoNombre" [options]="shared.usuarios"
-        optionLabel="nombre" optionValue="nombre" style="width: 180px;" appendTo="body">
-      </p-select>
-      <div class="permisos-tags">
-        <p-tag *ngFor="let p of permisosGrupoActivos()" [value]="p" severity="info"></p-tag>
-      </div>
-    </div>
+      <!-- ── Tab: Miembros ── -->
+      <p-tabpanel value="0">
+        <p-toolbar styleClass="mb-3">
+          <ng-template pTemplate="start">
+            <span class="font-semibold text-lg">
+              <i class="pi pi-users mr-2"></i>Miembros ({{ miembros.length }})
+            </span>
+          </ng-template>
+          <ng-template pTemplate="end">
+            <p-button
+              *ngIf="tienePerm('group:add')"
+              label="Agregar miembro"
+              icon="pi pi-user-plus"
+              severity="success"
+              (onClick)="abrirModalAgregar()">
+            </p-button>
+          </ng-template>
+        </p-toolbar>
 
-    <!-- Tabs principales -->
-    <p-tabs [value]="'0'">
-      <p-tablist>
-        <p-tab value="0"><i class="pi pi-users mr-1"></i>Miembros del grupo</p-tab>
-        <p-tab value="1" *ngIf="shared.tienePerm('group:edit')">
-          <i class="pi pi-cog mr-1"></i>Configuración del grupo
-        </p-tab>
-      </p-tablist>
+        <!-- Skeleton -->
+        <div *ngIf="cargandoMiembros">
+          <p-skeleton height="40px" styleClass="mb-2" *ngFor="let i of [1,2,3]"></p-skeleton>
+        </div>
 
-      <p-tabpanels>
+        <p-table
+          *ngIf="!cargandoMiembros"
+          [value]="miembros"
+          [paginator]="true"
+          [rows]="10"
+          styleClass="p-datatable-sm p-datatable-gridlines"
+          #dt>
 
-        <!-- ── Tab: Miembros ── -->
-        <p-tabpanel value="0">
-          <p-toolbar styleClass="mb-3">
-            <ng-template pTemplate="start">
-              <span class="font-semibold text-lg">
-                <i class="pi pi-users mr-2"></i>Miembros ({{ miembros.length }})
+          <ng-template pTemplate="caption">
+            <div class="tabla-caption">
+              <span class="p-input-icon-left">
+                <i class="pi pi-search"></i>
+                <input pInputText type="text"
+                  (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                  placeholder="Buscar miembro..." />
               </span>
-            </ng-template>
-            <ng-template pTemplate="end">
-              <p-button
-                *ngIf="shared.tienePerm('group:add')"
-                label="Agregar miembro"
-                icon="pi pi-user-plus"
-                severity="success"
-                (onClick)="abrirModalAgregar()">
+            </div>
+          </ng-template>
+
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width:48px;">#</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Desde</th>
+              <th style="width:160px;">Acciones</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-miembro let-i="rowIndex">
+            <tr *ngIf="miembro?.usuarios">
+              <td>{{ i + 1 }}</td>
+              <td>
+                <div class="miembro-nombre-cell">
+                  <p-avatar
+                    [label]="getNombre(miembro).charAt(0)"
+                    shape="circle" size="normal"
+                    [style]="{'background-color': getAvatarColor(miembro.usuarios?.id ?? '0'), 'color': '#fff'}">
+                  </p-avatar>
+                  <span>{{ getNombre(miembro) }}</span>
+                  <p-tag *ngIf="esUsuarioActual(miembro)" value="Tú" severity="info"></p-tag>
+                </div>
+              </td>
+              <td>
+                <div class="email-cell">
+                  <i class="pi pi-envelope email-icon"></i>
+                  {{ getEmail(miembro) }}
+                </div>
+              </td>
+              <td>{{ miembro.fecha_unido | date:'dd/MM/yyyy' }}</td>
+              <td>
+                <div class="acciones-cell">
+                  <p-button icon="pi pi-eye" severity="info" pTooltip="Ver permisos"
+                    (onClick)="abrirModalDetalle(miembro)">
+                  </p-button>
+                  <p-button 
+                    *ngIf="tienePerm('group:edit') && !esUsuarioActual(miembro) && !esCreadorGrupo(miembro)"
+                    icon="pi pi-shield"
+                    severity="warn"
+                    pTooltip="Editar permisos"
+                    (onClick)="modalDetalleVisible = false; abrirModalPermisos(miembro)">
+                  </p-button>
+                  <p-button *ngIf="tienePerm('group:add') && !esUsuarioActual(miembro)"
+                    icon="pi pi-trash" severity="danger" pTooltip="Eliminar del grupo"
+                    (onClick)="confirmarEliminarMiembro(miembro)">
+                  </p-button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr><td colspan="5" class="tabla-empty">
+              <i class="pi pi-inbox empty-icon"></i>
+              <p>No hay miembros en este grupo.</p>
+            </td></tr>
+          </ng-template>
+        </p-table>
+      </p-tabpanel>
+
+      <!-- ── Tab: Configuración ── -->
+      <p-tabpanel value="1">
+        <div class="config-wrapper">
+
+          <p-panel header="Información del grupo">
+            <div class="modal-form">
+              <div class="form-campo">
+                <label class="form-label">Nombre del grupo *</label>
+                <input pInputText [(ngModel)]="nombreGrupoEdit" class="form-input"
+                  placeholder="Nombre del grupo" />
+                <small *ngIf="errorNombre" class="p-error">{{ errorNombre }}</small>
+              </div>
+              <div class="form-campo">
+                <label class="form-label">Descripción</label>
+                <textarea pTextarea [(ngModel)]="descripcionGrupoEdit" rows="3"
+                  class="form-input" placeholder="Descripción del grupo..."></textarea>
+              </div>
+              <div class="config-footer-btns">
+                <p-button label="Cancelar" icon="pi pi-times" severity="danger"
+                  (onClick)="resetFormGrupo()">
+                </p-button>
+                <p-button label="Guardar cambios" icon="pi pi-save" severity="success"
+                  [loading]="guardandoGrupo" (onClick)="guardarCambiosGrupo()">
+                </p-button>
+              </div>
+            </div>
+          </p-panel>
+
+          <p-panel header="Zona de peligro" styleClass="mt-3">
+            <p-message severity="warn"
+              text="Las acciones en esta sección son irreversibles.">
+            </p-message>
+            <div class="danger-btns">
+              <p-button *ngIf="tienePerm('group:delete')"
+                label="Eliminar grupo" icon="pi pi-trash" severity="danger"
+                (onClick)="confirmarEliminarGrupo()">
               </p-button>
-            </ng-template>
-          </p-toolbar>
+            </div>
+          </p-panel>
 
-          <p-message *ngIf="!shared.tienePerm('group:view')"
-            severity="warn" text="No tienes permiso para ver la lista de miembros.">
-          </p-message>
+        </div>
+      </p-tabpanel>
 
-          <p-table
-            *ngIf="shared.tienePerm('group:view')"
-            [value]="miembros"
-            [paginator]="true"
-            [rows]="10"
-            styleClass="p-datatable-sm p-datatable-gridlines"
-            [globalFilterFields]="['nombre','email','rol']"
-            #dt>
+    </p-tabpanels>
+  </p-tabs>
 
-            <ng-template pTemplate="caption">
-              <div class="tabla-caption">
-                <span class="p-input-icon-left">
-                  <i class="pi pi-search"></i>
-                  <input pInputText type="text"
-                    (input)="dt.filterGlobal($any($event.target).value, 'contains')"
-                    placeholder="Buscar miembro..." />
-                </span>
-              </div>
-            </ng-template>
-
-            <ng-template pTemplate="header">
-              <tr>
-                <th style="width: 48px;">#</th>
-                <th pSortableColumn="nombre">Nombre <p-sortIcon field="nombre"></p-sortIcon></th>
-                <th pSortableColumn="email">Email <p-sortIcon field="email"></p-sortIcon></th>
-                <th pSortableColumn="rol">Rol <p-sortIcon field="rol"></p-sortIcon></th>
-                <th>Estado</th>
-                <th>Permisos activos</th>
-                <th style="width: 130px;">Acciones</th>
-              </tr>
-            </ng-template>
-
-            <ng-template pTemplate="body" let-miembro let-i="rowIndex">
-              <tr>
-                <td>{{ i + 1 }}</td>
-                <td>
-                  <div class="miembro-nombre-cell">
-                    <p-avatar [label]="miembro.nombre.charAt(0)" shape="circle" size="normal"
-                      [style]="{'background-color': getAvatarColor(miembro.id), 'color': '#fff'}">
-                    </p-avatar>
-                    <span>{{ miembro.nombre }}</span>
-                    <p-tag *ngIf="miembro.nombre === shared.usuarioActivoNombre" value="Tú" severity="info"></p-tag>
-                  </div>
-                </td>
-                <td>
-                  <div class="email-cell">
-                    <i class="pi pi-envelope email-icon"></i>
-                    {{ miembro.email }}
-                  </div>
-                </td>
-                <td>{{ miembro.rol }}</td>
-                <td>
-                  <p-tag [value]="miembro.activo ? 'Activo' : 'Inactivo'"
-                    [severity]="miembro.activo ? 'success' : 'danger'">
-                  </p-tag>
-                </td>
-                <td>
-                  <div class="permisos-cell">
-                    <p-tag *ngFor="let p of getPermisosGrupo(miembro)"
-                      [value]="p" severity="secondary" class="permiso-tag">
-                    </p-tag>
-                    <span *ngIf="getPermisosGrupo(miembro).length === 0" class="sin-permisos">Sin permisos</span>
-                  </div>
-                </td>
-                <td>
-                  <div class="acciones-cell">
-                    <p-button icon="pi pi-eye" severity="info" pTooltip="Ver detalles"
-                      (onClick)="abrirModalDetalle(miembro)">
-                    </p-button>
-                    <p-button *ngIf="shared.tienePerm('group:edit')"
-                      icon="pi pi-pencil" severity="info" pTooltip="Editar miembro"
-                      (onClick)="abrirModalEditar(miembro)">
-                    </p-button>
-                    <p-button *ngIf="shared.tienePerm('group:delete')"
-                      icon="pi pi-trash" severity="danger" pTooltip="Eliminar del grupo"
-                      [disabled]="miembro.nombre === shared.usuarioActivoNombre"
-                      (onClick)="confirmarEliminarMiembro(miembro)">
-                    </p-button>
-                  </div>
-                </td>
-              </tr>
-            </ng-template>
-
-            <ng-template pTemplate="emptymessage">
-              <tr><td colspan="7" class="tabla-empty">
-                <i class="pi pi-inbox empty-icon"></i>
-                <p>No hay miembros en este grupo.</p>
-              </td></tr>
-            </ng-template>
-          </p-table>
-        </p-tabpanel>
-
-        <!-- ── Tab: Configuración ── -->
-        <p-tabpanel value="1">
-          <div class="config-wrapper">
-
-            <p-panel header="Información del grupo">
-              <div class="modal-form">
-                <div class="form-campo">
-                  <label class="form-label">Nombre del grupo *</label>
-                  <div class="nombre-grupo-row">
-                    <input pInputText [(ngModel)]="nombreGrupoEdit" class="form-input"
-                      placeholder="Nombre del grupo" />
-                    <p-button label="Guardar" icon="pi pi-check" severity="info"
-                      (onClick)="guardarNombreGrupo()" [disabled]="!nombreGrupoEdit.trim()">
-                    </p-button>
-                  </div>
-                  <small *ngIf="errorNombre" class="p-error">{{ errorNombre }}</small>
-                </div>
-                <div class="form-campo">
-                  <label class="form-label">Descripción</label>
-                  <textarea pTextarea [(ngModel)]="descripcionGrupoEdit" rows="3" class="form-input"
-                    placeholder="Descripción del grupo..."></textarea>
-                </div>
-                <div class="form-campo">
-                  <label class="form-label">Nivel</label>
-                  <p-select [(ngModel)]="nivelGrupoEdit" [options]="nivelesOptions"
-                    optionLabel="label" optionValue="value" styleClass="form-input" appendTo="body">
-                  </p-select>
-                </div>
-                <div class="config-footer-btns">
-                  <p-button label="Cancelar" icon="pi pi-times" severity="danger"
-                    (onClick)="resetFormGrupo()">
-                  </p-button>
-                  <p-button label="Guardar cambios" icon="pi pi-save" severity="success"
-                    (onClick)="guardarCambiosGrupo()">
-                  </p-button>
-                </div>
-              </div>
-            </p-panel>
-
-            <p-panel header="Zona de peligro">
-              <p-message severity="warn" text="Las acciones en esta sección son irreversibles."></p-message>
-              <div class="danger-btns">
-                <p-button label="Archivar grupo" icon="pi pi-inbox" severity="warn"
-                  pTooltip="El grupo pasará a estado archivado"
-                  (onClick)="confirmarArchivar()">
-                </p-button>
-                <p-button *ngIf="shared.tienePerm('group:delete')"
-                  label="Eliminar grupo" icon="pi pi-trash" severity="danger"
-                  pTooltip="Esta acción es permanente"
-                  (onClick)="confirmarEliminarGrupo()">
-                </p-button>
-              </div>
-            </p-panel>
-
-          </div>
-        </p-tabpanel>
-
-      </p-tabpanels>
-    </p-tabs>
-
-  </div>
 </div>
 
 <!-- ── Modal agregar miembro ── -->
 <p-dialog header="Agregar miembro al grupo" [(visible)]="modalAgregarVisible"
-  [modal]="true" [draggable]="false" [resizable]="false" [style]="{ width: '480px' }">
+  [modal]="true" [draggable]="false" [resizable]="false" [style]="{ width: '520px' }">
 
   <div class="modal-form">
-    <p-message severity="info"
-      text="Ingresa el email del usuario que deseas agregar. El usuario debe estar registrado en el sistema.">
-    </p-message>
 
+    <!-- Buscar usuario -->
     <div class="form-campo">
       <label class="form-label">Email del usuario *</label>
-      <input pInputText [(ngModel)]="emailAgregar" placeholder="usuario@email.com" class="form-input"
-        (keyup.enter)="buscarUsuarioPorEmail()" />
+      <div class="search-row">
+        <input pInputText [(ngModel)]="emailAgregar"
+          placeholder="usuario@email.com" class="form-input"
+          (keyup.enter)="buscarUsuarioPorEmail()" />
+        <p-button icon="pi pi-search" severity="secondary"
+          [loading]="buscandoUsuario"
+          (onClick)="buscarUsuarioPorEmail()"
+          [disabled]="!emailAgregar.trim()">
+        </p-button>
+      </div>
       <small class="p-error" *ngIf="errorEmail">{{ errorEmail }}</small>
     </div>
 
-    <div *ngIf="usuarioEncontrado">
-      <p-divider align="left"><span class="divider-label">Usuario encontrado</span></p-divider>
-      <div class="usuario-encontrado-card">
-        <p-avatar [label]="usuarioEncontrado.nombre.charAt(0)" shape="circle" size="large"
-          [style]="{'background-color': getAvatarColor(usuarioEncontrado.id), 'color': '#fff'}">
-        </p-avatar>
-        <div>
-          <p class="usuario-nombre">{{ usuarioEncontrado.nombre }}</p>
-          <small class="usuario-email">{{ usuarioEncontrado.email }}</small>
-        </div>
-        <p-tag [value]="usuarioEncontrado.activo ? 'Activo' : 'Inactivo'"
-          [severity]="usuarioEncontrado.activo ? 'success' : 'danger'" class="ml-auto">
-        </p-tag>
+    <!-- Usuario encontrado -->
+    <div *ngIf="usuarioEncontrado" class="usuario-encontrado-card">
+      <p-avatar [label]="usuarioEncontrado.nombre_completo?.charAt(0) ?? '?'"
+        shape="circle" size="large"
+        [style]="{'background-color': getAvatarColor(usuarioEncontrado.id), 'color': '#fff'}">
+      </p-avatar>
+      <div>
+        <p class="usuario-nombre">{{ usuarioEncontrado.nombre_completo }}</p>
+        <small class="usuario-email">{{ usuarioEncontrado.email }}</small>
       </div>
+      <p-tag value="Encontrado" severity="success"></p-tag>
     </div>
 
-    <div class="form-campo">
-      <label class="form-label">Rol en el grupo</label>
-      <p-select [(ngModel)]="rolAgregar" [options]="rolesOptions"
-        optionLabel="label" optionValue="value" styleClass="form-input"
-        placeholder="Selecciona un rol" appendTo="body">
-      </p-select>
+    <p-divider *ngIf="usuarioEncontrado" align="left">
+      <span class="divider-label">Permisos iniciales</span>
+    </p-divider>
+
+    <!-- Selector de permisos -->
+    <div *ngIf="usuarioEncontrado" class="permisos-selector">
+
+      <p-message severity="info"
+        text="Selecciona los permisos que tendrá este miembro en el grupo.">
+      </p-message>
+
+      <div class="permisos-grupo-seccion">
+        <p class="permisos-seccion-label"><i class="pi pi-users mr-1"></i>Permisos de grupo</p>
+        <div class="permisos-checks">
+          <div *ngFor="let p of permisosDeGrupo(todosPermisos)" class="permiso-check-item">
+            <p-checkbox
+              [value]="p.id"
+              [(ngModel)]="permisosSeleccionados"
+              [inputId]="'add-' + p.id">
+            </p-checkbox>
+            <label [for]="'add-' + p.id" class="permiso-check-label">
+              <span class="permiso-nombre">{{ p.nombre }}</span>
+              <small class="permiso-desc">{{ p.descripcion }}</small>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="permisos-grupo-seccion">
+        <p class="permisos-seccion-label"><i class="pi pi-ticket mr-1"></i>Permisos de tickets</p>
+        <div class="permisos-checks">
+          <div *ngFor="let p of permisosDeTicket(todosPermisos)" class="permiso-check-item">
+            <p-checkbox
+              [value]="p.id"
+              [(ngModel)]="permisosSeleccionados"
+              [inputId]="'add-t-' + p.id">
+            </p-checkbox>
+            <label [for]="'add-t-' + p.id" class="permiso-check-label">
+              <span class="permiso-nombre">{{ p.nombre }}</span>
+              <small class="permiso-desc">{{ p.descripcion }}</small>
+            </label>
+          </div>
+        </div>
+      </div>
+
     </div>
+
   </div>
 
   <ng-template pTemplate="footer">
     <p-button label="Cancelar" icon="pi pi-times" severity="danger"
       (onClick)="cerrarModalAgregar()">
     </p-button>
-    <p-button label="Buscar usuario" icon="pi pi-search" severity="secondary"
-      (onClick)="buscarUsuarioPorEmail()" [disabled]="!emailAgregar.trim()">
-    </p-button>
     <p-button label="Agregar al grupo" icon="pi pi-user-plus" severity="success"
-      (onClick)="agregarMiembro()" [disabled]="!usuarioEncontrado || !rolAgregar">
+      (onClick)="agregarMiembro()"
+      [disabled]="!usuarioEncontrado">
     </p-button>
   </ng-template>
 </p-dialog>
 
-<!-- ── Modal ver detalle de miembro ── -->
-<p-dialog header="Detalle del miembro" [(visible)]="modalDetalleVisible"
+<!-- ── Modal ver permisos ── -->
+<p-dialog header="Permisos del miembro" [(visible)]="modalDetalleVisible"
   [modal]="true" [draggable]="false" [resizable]="false" [style]="{ width: '480px' }">
 
   <div *ngIf="miembroSeleccionado" class="modal-form">
 
     <div class="detalle-avatar-row">
-      <p-avatar [label]="miembroSeleccionado.nombre.charAt(0)" shape="circle" size="xlarge"
-        [style]="{'background-color': getAvatarColor(miembroSeleccionado.id), 'color': '#fff'}">
+      <p-avatar [label]="getNombre(miembroSeleccionado).charAt(0)"
+        shape="circle" size="xlarge"
+        [style]="{'background-color': getAvatarColor(miembroSeleccionado.usuarios?.id ?? '0'), 'color': '#fff'}">
       </p-avatar>
       <div>
-        <h3 class="detalle-nombre">{{ miembroSeleccionado.nombre }}</h3>
-        <p class="detalle-email">{{ miembroSeleccionado.email }}</p>
-        <div class="detalle-tags">
-          <p-tag [value]="miembroSeleccionado.activo ? 'Activo' : 'Inactivo'"
-            [severity]="miembroSeleccionado.activo ? 'success' : 'danger'">
-          </p-tag>
-          <p-tag *ngIf="miembroSeleccionado.nombre === shared.usuarioActivoNombre"
-            value="Tú" severity="info">
-          </p-tag>
-        </div>
+        <h3 class="detalle-nombre">{{ getNombre(miembroSeleccionado) }}</h3>
+        <p class="detalle-email">{{ getEmail(miembroSeleccionado) }}</p>
+        <p-tag *ngIf="esUsuarioActual(miembroSeleccionado)" value="Tú" severity="info"></p-tag>
       </div>
     </div>
 
-    <p-divider></p-divider>
+    <div *ngIf="cargandoPermisosMiembro">
+      <p-skeleton height="24px" styleClass="mb-1" *ngFor="let i of [1,2,3]"></p-skeleton>
+    </div>
 
-    <div class="detalle-grid">
-      <div>
-        <p class="detalle-field-label">Rol en el grupo</p>
-        <p class="detalle-field-value">{{ miembroSeleccionado.rol }}</p>
-      </div>
-      <div>
-        <p class="detalle-field-label">Estado</p>
-        <p-tag [value]="miembroSeleccionado.activo ? 'Activo' : 'Inactivo'"
-          [severity]="miembroSeleccionado.activo ? 'success' : 'danger'">
+    <div *ngIf="!cargandoPermisosMiembro">
+
+      <p-divider align="left">
+        <span class="divider-label"><i class="pi pi-users mr-1"></i>Permisos de grupo</span>
+      </p-divider>
+      <div class="permisos-cell">
+        <p-tag *ngFor="let p of permisosDeGrupo(permisosMiembro)"
+          [value]="p.nombre" severity="info">
         </p-tag>
+        <small *ngIf="permisosDeGrupo(permisosMiembro).length === 0"
+          class="text-color-secondary">Sin permisos de grupo</small>
       </div>
-      <div>
-        <p class="detalle-field-label">Email</p>
-        <p class="detalle-field-value">{{ miembroSeleccionado.email }}</p>
+
+      <p-divider align="left">
+        <span class="divider-label"><i class="pi pi-ticket mr-1"></i>Permisos de tickets</span>
+      </p-divider>
+      <div class="permisos-cell">
+        <p-tag *ngFor="let p of permisosDeTicket(permisosMiembro)"
+          [value]="p.nombre" severity="warn">
+        </p-tag>
+        <small *ngIf="permisosDeTicket(permisosMiembro).length === 0"
+          class="text-color-secondary">Sin permisos de tickets</small>
       </div>
-      <div>
-        <p class="detalle-field-label">ID</p>
-        <p class="detalle-field-value">#{{ miembroSeleccionado.id }}</p>
-      </div>
+
     </div>
-
-    <p-divider align="left">
-      <span class="divider-label">Permisos del sistema</span>
-    </p-divider>
-
-    <div class="permisos-cell">
-      <p-tag *ngFor="let p of getPermisosGrupo(miembroSeleccionado)"
-        [value]="p" severity="info">
-      </p-tag>
-      <p-message *ngIf="getPermisosGrupo(miembroSeleccionado).length === 0"
-        severity="secondary" text="Este usuario no tiene permisos asignados.">
-      </p-message>
-    </div>
-
   </div>
 
   <ng-template pTemplate="footer">
     <p-button label="Cerrar" icon="pi pi-times" severity="danger"
       (onClick)="modalDetalleVisible = false">
     </p-button>
-    <p-button *ngIf="shared.tienePerm('group:edit')"
-      label="Editar" icon="pi pi-pencil" severity="info"
-      (onClick)="pasarAEditar()">
+    <p-button
+      *ngIf="tienePerm('group:edit') && !esUsuarioActual(miembroSeleccionado) && !esCreadorGrupo(miembroSeleccionado)"
+      label="Editar permisos" icon="pi pi-shield" severity="warn"
+      (onClick)="modalDetalleVisible = false; abrirModalPermisos(miembroSeleccionado)">
     </p-button>
   </ng-template>
 </p-dialog>
 
-<!-- ── Modal editar miembro ── -->
-<p-dialog [header]="'Editar miembro — ' + (miembroEditando?.nombre ?? '')"
-  [(visible)]="modalEditarVisible"
-  [modal]="true" [draggable]="false" [resizable]="false" [style]="{ width: '480px' }">
+<!-- ── Modal editar permisos ── -->
+<p-dialog header="Editar permisos del miembro" [(visible)]="modalPermisosVisible"
+  [modal]="true" [draggable]="false" [resizable]="false" [style]="{ width: '520px' }">
 
-  <div *ngIf="miembroEditando" class="modal-form">
+  <div *ngIf="miembroEditandoPermisos" class="modal-form">
 
-    <div class="usuario-encontrado-card">
-      <p-avatar [label]="miembroEditando.nombre.charAt(0)" shape="circle" size="large"
-        [style]="{'background-color': getAvatarColor(miembroEditando.id), 'color': '#fff'}">
+    <div class="detalle-avatar-row">
+      <p-avatar [label]="getNombre(miembroEditandoPermisos).charAt(0)"
+        shape="circle" size="large"
+        [style]="{'background-color': getAvatarColor(miembroEditandoPermisos.usuarios?.id ?? '0'), 'color': '#fff'}">
       </p-avatar>
       <div>
-        <p class="usuario-nombre">{{ miembroEditando.nombre }}</p>
-        <small class="usuario-email">{{ miembroEditando.email }}</small>
+        <p class="usuario-nombre">{{ getNombre(miembroEditandoPermisos) }}</p>
+        <small class="usuario-email">{{ getEmail(miembroEditandoPermisos) }}</small>
       </div>
     </div>
 
-    <p-divider></p-divider>
-
-    <div class="form-campo">
-      <label class="form-label"><i class="pi pi-user mr-1"></i>Nombre *</label>
-      <input pInputText [(ngModel)]="formEditar.nombre" placeholder="Nombre completo" class="form-input" />
-      <small class="p-error" *ngIf="erroresEditar.nombre">{{ erroresEditar.nombre }}</small>
+    <div *ngIf="cargandoPermisosMiembro">
+      <p-skeleton height="32px" styleClass="mb-2" *ngFor="let i of [1,2,3,4]"></p-skeleton>
     </div>
 
-    <div class="form-campo">
-      <label class="form-label"><i class="pi pi-envelope mr-1"></i>Email *</label>
-      <input pInputText [(ngModel)]="formEditar.email" placeholder="usuario@email.com" class="form-input" />
-      <small class="p-error" *ngIf="erroresEditar.email">{{ erroresEditar.email }}</small>
-    </div>
+    <div *ngIf="!cargandoPermisosMiembro">
 
-    <div class="form-campo">
-      <label class="form-label"><i class="pi pi-briefcase mr-1"></i>Rol en el grupo</label>
-      <p-select [(ngModel)]="formEditar.rol" [options]="rolesOptions"
-        optionLabel="label" optionValue="value"
-        placeholder="Selecciona un rol" styleClass="form-input" appendTo="body">
-      </p-select>
-    </div>
+      <div class="permisos-grupo-seccion">
+        <p class="permisos-seccion-label"><i class="pi pi-users mr-1"></i>Permisos de grupo</p>
+        <div class="permisos-checks">
+          <div *ngFor="let p of permisosDeGrupo(todosPermisos)" class="permiso-check-item">
+            <p-checkbox
+              [value]="p.id"
+              [(ngModel)]="permisosEditando"
+              [inputId]="'edit-' + p.id">
+            </p-checkbox>
+            <label [for]="'edit-' + p.id" class="permiso-check-label">
+              <span class="permiso-nombre">{{ p.nombre }}</span>
+              <small class="permiso-desc">{{ p.descripcion }}</small>
+            </label>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-campo">
-      <label class="form-label"><i class="pi pi-circle mr-1"></i>Estado</label>
-      <p-toggleButton [(ngModel)]="formEditar.activo"
-        onLabel="Activo" offLabel="Inactivo"
-        [onIcon]="'pi pi-check'" [offIcon]="'pi pi-times'"
-        [style]="{'width': '110px'}">
-      </p-toggleButton>
-    </div>
+      <div class="permisos-grupo-seccion">
+        <p class="permisos-seccion-label"><i class="pi pi-ticket mr-1"></i>Permisos de tickets</p>
+        <div class="permisos-checks">
+          <div *ngFor="let p of permisosDeTicket(todosPermisos)" class="permiso-check-item">
+            <p-checkbox
+              [value]="p.id"
+              [(ngModel)]="permisosEditando"
+              [inputId]="'edit-t-' + p.id">
+            </p-checkbox>
+            <label [for]="'edit-t-' + p.id" class="permiso-check-label">
+              <span class="permiso-nombre">{{ p.nombre }}</span>
+              <small class="permiso-desc">{{ p.descripcion }}</small>
+            </label>
+          </div>
+        </div>
+      </div>
 
+    </div>
   </div>
 
   <ng-template pTemplate="footer">
     <p-button label="Cancelar" icon="pi pi-times" severity="danger"
-      (onClick)="modalEditarVisible = false">
+      (onClick)="modalPermisosVisible = false">
     </p-button>
-    <p-button label="Guardar cambios" icon="pi pi-check" severity="success"
-      (onClick)="guardarEdicionMiembro()">
+    <p-button label="Guardar permisos" icon="pi pi-check" severity="success"
+      [loading]="guardandoPermisos"
+      (onClick)="guardarPermisosMiembro()">
     </p-button>
   </ng-template>
 </p-dialog>

@@ -388,3 +388,7 @@
   gap: 0.5rem;
   font-size: 0.9rem;
 }
+
+.prioridad-bar-alta .p-progressbar-value    { background-color: #EF4444; }
+.prioridad-bar-media .p-progressbar-value   { background-color: #F59E0B; }
+.prioridad-bar-baja .p-progressbar-value    { background-color: #3B82F6; }

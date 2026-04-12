@@ -1,13 +1,12 @@
-<!-- Navbar (incluye slidebar) -->
+<!-- Navbar -->
 <app-navbar titulo="Grupos"></app-navbar>
 
-<!-- Contenido principal -->
 <div class="page-wrapper">
 
   <div class="page-header">
-    <h2 class="page-title">¡Bienvenido!</h2>
+    <h2 class="page-title">¡Bienvenido, {{ usuarioActual?.nombre_completo ?? usuarioActual?.username }}!</h2>
     <p-button
-      *ngIf="shared.tienePerm('group:add')"
+      *ngIf="tienePermGlobal('group:create')"
       label="Agregar Grupo"
       icon="pi pi-plus"
       (onClick)="abrirModal()">
@@ -16,7 +15,7 @@
 
   <p-divider></p-divider>
 
-  <!-- Tarjetas de estadísticas -->
+  <!-- Stats -->
   <div class="stats-grid">
     <div class="stat-card-wrapper">
       <p-card header="Total Grupos" styleClass="stat-card">
@@ -25,36 +24,36 @@
       </p-card>
     </div>
     <div class="stat-card-wrapper">
-      <p-card header="Materias" styleClass="stat-card">
-        <p class="stat-number">8</p>
-        <p-tag value="Semestre 4" severity="info"></p-tag>
-      </p-card>
-    </div>
-    <div class="stat-card-wrapper">
-      <p-card header="Promedio General" styleClass="stat-card">
-        <p class="stat-number">8.7</p>
-        <p-tag value="Bueno" severity="warn"></p-tag>
-      </p-card>
-    </div>
-    <div class="stat-card-wrapper">
-      <p-card header="Asistencia" styleClass="stat-card">
-        <p class="stat-number">91%</p>
-        <p-tag value="Regular" severity="success"></p-tag>
+      <p-card header="Total Tickets" styleClass="stat-card">
+        <p class="stat-number">{{ getTotalTickets() }}</p>
+        <p-tag value="Tickets" severity="info"></p-tag>
       </p-card>
     </div>
   </div>
 
   <p-divider align="left">
-    <span class="grupos-title">Grupos</span>
+    <span class="grupos-title">Mis Grupos</span>
   </p-divider>
 
+  <!-- Skeleton mientras carga -->
+  <div *ngIf="cargando" class="grupos-grid">
+    <div *ngFor="let i of [1,2,3]" class="grupo-card-wrapper">
+      <p-card styleClass="grupo-card">
+        <p-skeleton height="80px" styleClass="mb-2"></p-skeleton>
+        <p-skeleton width="60%" styleClass="mb-2"></p-skeleton>
+        <p-skeleton width="40%"></p-skeleton>
+      </p-card>
+    </div>
+  </div>
+
   <!-- Tarjetas de grupos -->
-  <div class="grupos-grid">
+  <div *ngIf="!cargando" class="grupos-grid">
     <div
       *ngFor="let grupo of grupos"
       class="grupo-card-wrapper"
-      (click)="irAlDashboard(grupo)">
-      <p-card [header]="grupo.nombre" [subheader]="grupo.nivel" styleClass="grupo-card">
+      [class.grupo-sin-acceso]="!puedeVerDashboard(grupo)"
+      (click)="puedeVerDashboard(grupo) && irAlDashboard(grupo)">
+      <p-card [header]="grupo.nombre" styleClass="grupo-card">
 
         <ng-template pTemplate="header">
           <div class="grupo-avatar-wrapper">
@@ -70,35 +69,40 @@
         <div class="grupo-info">
           <div class="grupo-info-row">
             <i class="pi pi-user info-icon"></i>
-            <span>{{ grupo.autor }}</span>
-          </div>
-          <div class="grupo-info-row">
-            <i class="pi pi-users info-icon"></i>
-            <span>{{ grupo.integrantes }} integrantes</span>
+            <span>{{ getNombreCreador(grupo) }}</span>
           </div>
           <div class="grupo-info-row">
             <i class="pi pi-ticket info-icon"></i>
-            <span>{{ grupo.tickets }} tickets</span>
+            <span>{{ grupo._totalTickets ?? 0 }} tickets</span>
           </div>
-          <p-tag [value]="grupo.nivel" [severity]="getNivelSeverity(grupo.nivel)" class="nivel-tag"></p-tag>
+          <div class="grupo-info-row" *ngIf="grupo.creado_en">
+            <i class="pi pi-calendar info-icon"></i>
+            <span>{{ grupo.creado_en | date:'dd/MM/yyyy' }}</span>
+          </div>
+          <p *ngIf="grupo.descripcion" class="grupo-descripcion-text">{{ grupo.descripcion }}</p>
         </div>
 
         <ng-template pTemplate="footer">
           <div class="grupo-footer">
             <p-button
-              *ngIf="shared.tienePerm('group:edit')"
+              *ngIf="tienePermEnGrupo(grupo.id, 'group:edit') || esCreador(grupo)"
               icon="pi pi-pencil" severity="info" pTooltip="Editar"
               (onClick)="editarCard($event, grupo)">
             </p-button>
             <p-button
-              *ngIf="shared.tienePerm('group:delete')"
+              *ngIf="tienePermEnGrupo(grupo.id, 'group:delete') || esCreador(grupo)"
               icon="pi pi-trash" severity="danger" pTooltip="Eliminar"
               (onClick)="confirmarEliminarCard($event, grupo)">
             </p-button>
-            <p-button
+            <!-- Flecha solo si puede ver -->
+            <p-button *ngIf="puedeVerDashboard(grupo)"
               icon="pi pi-arrow-right" severity="success"
               (onClick)="irAlDashboard(grupo); $event.stopPropagation()">
             </p-button>
+            <!-- Mensaje si no puede ver -->
+            <small *ngIf="!puedeVerDashboard(grupo)" class="text-color-secondary">
+              <i class="pi pi-lock mr-1"></i>Sin acceso
+            </small>
           </div>
         </ng-template>
 
@@ -108,9 +112,9 @@
 
   <!-- Estado vacío -->
   <p-message
-    *ngIf="grupos.length === 0"
+    *ngIf="!cargando && grupos.length === 0"
     severity="info"
-    text="No hay grupos registrados. Haz clic en 'Agregar Grupo' para comenzar."
+    text="No perteneces a ningún grupo aún."
     styleClass="w-full">
   </p-message>
 
@@ -126,59 +130,22 @@
   [style]="{ width: '500px' }">
 
   <div class="modal-form">
-
     <div class="form-campo">
       <label class="form-label">Nombre *</label>
       <input pInputText [(ngModel)]="form.nombre" placeholder="Nombre del grupo" class="form-input" />
       <small class="p-error" *ngIf="errores.nombre">{{ errores.nombre }}</small>
     </div>
-
-    <div class="form-campo">
-      <label class="form-label">Nivel *</label>
-      <p-select
-        [(ngModel)]="form.nivel"
-        [options]="nivelesOptions"
-        optionLabel="label"
-        optionValue="value"
-        placeholder="Selecciona un nivel"
-        styleClass="form-input">
-      </p-select>
-      <small class="p-error" *ngIf="errores.nivel">{{ errores.nivel }}</small>
-    </div>
-
-    <div class="form-campo">
-      <label class="form-label">Autor *</label>
-      <input pInputText [(ngModel)]="form.autor" placeholder="Nombre del autor" class="form-input" />
-      <small class="p-error" *ngIf="errores.autor">{{ errores.autor }}</small>
-    </div>
-
-    <div class="form-campo">
-      <label class="form-label">Integrantes *</label>
-      <p-inputnumber [(ngModel)]="form.integrantes" placeholder="Número de integrantes" [min]="1" styleClass="form-input"></p-inputnumber>
-      <small class="p-error" *ngIf="errores.integrantes">{{ errores.integrantes }}</small>
-    </div>
-
-    <div class="form-campo">
-      <label class="form-label">Tickets *</label>
-      <p-inputnumber [(ngModel)]="form.tickets" placeholder="Número de tickets" [min]="0" styleClass="form-input"></p-inputnumber>
-      <small class="p-error" *ngIf="errores.tickets">{{ errores.tickets }}</small>
-    </div>
-
     <div class="form-campo">
       <label class="form-label">Descripción</label>
       <textarea pTextarea [(ngModel)]="form.descripcion" placeholder="Descripción del grupo" rows="3" class="form-input"></textarea>
     </div>
-
   </div>
 
   <ng-template pTemplate="footer">
     <p-button label="Cancelar" icon="pi pi-times" severity="danger" (onClick)="cerrarModal()"></p-button>
     <p-button [label]="modoEdicion ? 'Guardar cambios' : 'Agregar'" icon="pi pi-check" (onClick)="guardar()"></p-button>
   </ng-template>
-
 </p-dialog>
 
-<!-- Confirmación eliminar -->
 <p-confirmDialog></p-confirmDialog>
-
 <p-toast></p-toast>

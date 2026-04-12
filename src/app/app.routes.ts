@@ -21,20 +21,18 @@ export const routes: Routes = [
   component: GrupoComponent },
 
   { path: 'grupo-dashboard/:id',
-    component: GrupoDashboardComponent,
-    canActivate: [permGuard('group:view')] },
+    component: GrupoDashboardComponent },
 
   { path: 'gestion-grupo/:id',
-    component: GestionGrupoComponent,
-    canActivate: [permGuard('group:view')] },
+    component: GestionGrupoComponent },
 
   { path: 'usuario',
     component: UsuarioComponent },
 
   { path: 'superadmin',
-    component: SuperadminComponent,
-    canActivate: [permGuard('admin:users')] },
-
+  component: SuperadminComponent,
+  canActivate: [permGuard('superadmin')] }, // ← coincide con tu BD
+  
   { path: 'acceso-denegado',
     component: AccesoDenegadoComponent }, // 👈
 

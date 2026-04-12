@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Prueba Supabase ERP</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+    h2 { color: #333; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; }
+    button:hover { background: #45a049; }
+    pre { background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; font-size: 13px; white-space: pre-wrap; }
+    .seccion { background: white; padding: 15px; margin: 15px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; width: 250px; }
+    h3 { color: #444; }
+  </style>
+</head>
+<body>
+
+<h2>🔧 Prueba de APIs - Supabase ERP</h2>
+
+<!-- REGISTRO -->
+<div class="seccion">
+  <h3>1. Registro</h3>
+  <input type="text"     id="reg-nombre"    placeholder="Nombre completo"><br>
+  <input type="text"     id="reg-username"  placeholder="Username"><br>
+  <input type="email"    id="reg-email"     placeholder="Email"><br>
+  <input type="password" id="reg-password"  placeholder="Contraseña"><br>
+  <input type="text"     id="reg-direccion" placeholder="Dirección"><br>
+  <input type="text"     id="reg-telefono"  placeholder="Teléfono"><br>
+  <button onclick="registro()">Registrar</button>
+  <pre id="resultado-registro">Aquí aparecerá la respuesta...</pre>
+</div>
+
+<!-- LOGIN -->
+<div class="seccion">
+  <h3>2. Login</h3>
+  <input type="email"    id="login-email"    placeholder="Email"><br>
+  <input type="password" id="login-password" placeholder="Contraseña"><br>
+  <button onclick="login()">Iniciar Sesión</button>
+  <pre id="resultado-login">Aquí aparecerá la respuesta...</pre>
+</div>
+
+<!-- CAMBIAR CONTRASEÑA -->
+<div class="seccion">
+  <h3>3. Cambiar Contraseña</h3>
+  <p style="color:#888;font-size:13px">⚠️ Debes estar logueado primero para cambiar la contraseña</p>
+  <input type="password" id="nueva-password" placeholder="Nueva contraseña"><br>
+  <button onclick="cambiarPassword()">Cambiar Contraseña</button>
+  <pre id="resultado-password">Aquí aparecerá la respuesta...</pre>
+</div>
+
+<script>
+  const { createClient } = supabase;
+  const client = createClient(
+    'https://dgmgngfrespeheuzrpso.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbWduZ2ZyZXNwZWhldXpycHNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMDk2MzMsImV4cCI6MjA4OTg4NTYzM30.fUqQzetG3ZREKVTPQNmv2BzjwFoL3No5gf8qk-0rKuQ'  // ← reemplaza esto
+  );
+
+  // REGISTRO
+  async function registro() {
+    const nombre    = document.getElementById('reg-nombre').value;
+    const username  = document.getElementById('reg-username').value;
+    const email     = document.getElementById('reg-email').value;
+    const password  = document.getElementById('reg-password').value;
+    const direccion = document.getElementById('reg-direccion').value;
+    const telefono  = document.getElementById('reg-telefono').value;
+
+    const resultado = document.getElementById('resultado-registro');
+    resultado.textContent = 'Cargando...';
+
+    // 1. Crear en Auth
+    const { data, error } = await client.auth.signUp({ email, password });
+
+    if (error) {
+      resultado.textContent = 'ERROR: ' + error.message;
+      return;
+    }
+
+    // 2. Insertar en tabla usuarios
+    const { error: dbError } = await client.from('usuarios').insert({
+      id:                data.user.id,
+      nombre_completo:   nombre,
+      username:          username,
+      email:             email,
+      direccion:         direccion,
+      telefono:          telefono,
+      permisos_globales: [],
+      fecha_inicio:      new Date().toISOString().split('T')[0],
+      creado_en:         new Date()
+    });
+
+    if (dbError) {
+      resultado.textContent = 'Usuario creado en Auth pero error en tabla: ' + dbError.message;
+      return;
+    }
+
+    resultado.textContent = JSON.stringify(data, null, 2);
+  }
+
+  // LOGIN
+  async function login() {
+    const email    = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+
+    const resultado = document.getElementById('resultado-login');
+    resultado.textContent = 'Cargando...';
+
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      resultado.textContent = 'ERROR: ' + error.message;
+      return;
+    }
+
+    // Traer datos completos del usuario desde tu tabla
+    const { data: usuarioData, error: usuarioError } = await client
+      .from('usuarios')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (usuarioError) {
+      resultado.textContent = JSON.stringify(data, null, 2);
+      return;
+    }
+
+    resultado.textContent = JSON.stringify({
+      sesion: {
+        access_token: data.session.access_token,
+        expires_at:   data.session.expires_at
+      },
+      usuario: usuarioData
+    }, null, 2);
+  }
+
+  // CAMBIAR CONTRASEÑA
+  async function cambiarPassword() {
+    const nuevaPassword = document.getElementById('nueva-password').value;
+    const resultado     = document.getElementById('resultado-password');
+    resultado.textContent = 'Cargando...';
+
+    const { data, error } = await client.auth.updateUser({
+      password: nuevaPassword
+    });
+
+    if (error) {
+      resultado.textContent = 'ERROR: ' + error.message;
+      return;
+    }
+
+    resultado.textContent = JSON.stringify({
+      mensaje:  'Contraseña actualizada correctamente',
+      usuario:  data.user.email,
+      updated:  data.user.updated_at
+    }, null, 2);
+  }
+</script>
+
+</body>
+</html>

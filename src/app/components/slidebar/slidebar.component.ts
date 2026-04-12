@@ -19,7 +19,7 @@ export class SlidebarComponent implements OnInit, DoCheck {
   @Output() visibleChange = new EventEmitter<boolean>();
 
   menuItems: MenuItem[] = [];
-  private ultimoUsuario = '';  // para detectar cambio de usuario
+  private ultimoUsuario = '';
 
   constructor(public shared: SharedDataService) {}
 
@@ -28,7 +28,6 @@ export class SlidebarComponent implements OnInit, DoCheck {
     this.ultimoUsuario = this.shared.usuarioActivoNombre;
   }
 
-  // Solo reconstruye el menu si cambió el usuario activo
   ngDoCheck() {
     if (this.shared.usuarioActivoNombre !== this.ultimoUsuario) {
       this.ultimoUsuario = this.shared.usuarioActivoNombre;
@@ -42,16 +41,15 @@ export class SlidebarComponent implements OnInit, DoCheck {
       { label: 'Inicio de Sesión', icon: 'pi pi-sign-in',   routerLink: ['/login'] },
       { label: 'Registro',         icon: 'pi pi-user-plus', routerLink: ['/register'] },
       { separator: true },
-      { label: 'Grupos',           icon: 'pi pi-users',     routerLink: ['/grupos'] },
+      // ✅ Corregido: '/grupos' no existe, la ruta correcta es '/grupo'
+      { label: 'Grupos', icon: 'pi pi-users', routerLink: ['/grupo'] },
 
       ...(this.shared.tienePerm('group:view') ? [
         { label: 'Gestión de grupo', icon: 'pi pi-cog', routerLink: ['/gestion-grupo'] },
       ] : []),
 
-      ...(this.shared.tienePerm('ticket:view') ? [
-        { separator: true },
-        { label: 'Tickets', icon: 'pi pi-ticket', routerLink: ['/tickets'] },
-      ] : []),
+      // ✅ Eliminado: '/tickets' no existe como ruta directa
+      // Los tickets se acceden desde grupo-dashboard/:id
 
       ...(this.shared.tienePerm('admin:users') ? [
         { separator: true },

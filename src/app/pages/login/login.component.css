@@ -70,3 +70,12 @@ h2 {
   border-radius: 6px;
   font-size: 0.9rem;
 }
+
+/* ── Mensajes de error bajo los campos ── */
+small.p-error {
+  color: #000000 !important;
+  font-weight: 600;
+  font-size: 0.78rem;
+  display: block;
+  margin-top: 0.25rem;
+}

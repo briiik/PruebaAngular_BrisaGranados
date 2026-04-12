@@ -66,3 +66,12 @@ h2 {
   color: #7c3aed;
   text-decoration: none;
 }
+
+/* ── Mensajes de error bajo los campos ── */
+small.p-error {
+  color: #000000 !important;
+  font-weight: 600;
+  font-size: 0.78rem;
+  display: block;
+  margin-top: 0.25rem;
+}
