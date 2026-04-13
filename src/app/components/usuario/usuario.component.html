@@ -15,9 +15,16 @@
 
       <ng-template pTemplate="header">
         <div class="perfil-header">
-          <p-avatar image="https://storage.waifuwall.com/preview/1038.webp" shape="circle" size="xlarge"></p-avatar>
-          <h3 class="perfil-nombre">{{ usuario.nombreCompleto }}</h3>
-          <p-tag value="Administrador" severity="info"></p-tag>
+          <p-avatar
+            [label]="shared.usuarioActual?.nombre_completo?.charAt(0)?.toUpperCase() ?? '?'"
+            shape="circle"
+            size="xlarge">
+          </p-avatar>
+          <h3 class="perfil-nombre">{{ shared.usuarioActual?.nombre_completo ?? 'Cargando...' }}</h3>
+          <p-tag
+            [value]="shared.tienePerm('superadmin') ? 'Superadmin' : 'Usuario'"
+            [severity]="shared.tienePerm('superadmin') ? 'danger' : 'info'">
+          </p-tag>
         </div>
       </ng-template>
 
@@ -25,7 +32,14 @@
         <span class="divider-label">Información personal</span>
       </p-divider>
 
-      <p-table [value]="datosUsuario" styleClass="p-datatable-sm">
+      <!-- Skeleton mientras carga -->
+      <ng-container *ngIf="!shared.usuarioActual">
+        <p style="text-align:center; color: var(--p-text-muted-color)">
+          <i class="pi pi-spin pi-spinner"></i> Cargando información...
+        </p>
+      </ng-container>
+
+      <p-table *ngIf="shared.usuarioActual" [value]="datosUsuario" styleClass="p-datatable-sm">
         <ng-template pTemplate="body" let-dato>
           <tr>
             <td class="tabla-campo">
@@ -91,7 +105,7 @@
 
   <ng-template pTemplate="footer">
     <p-button label="Cancelar" icon="pi pi-times" severity="danger" (onClick)="modalEdicionVisible = false"></p-button>
-    <p-button label="Guardar cambios" icon="pi pi-check" (onClick)="guardarEdicion()"></p-button>
+    <p-button label="Guardar cambios" icon="pi pi-check" [loading]="guardando" (onClick)="guardarEdicion()"></p-button>
   </ng-template>
 
 </p-dialog>

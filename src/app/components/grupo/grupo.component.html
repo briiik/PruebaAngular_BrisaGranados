@@ -5,8 +5,9 @@
 
   <div class="page-header">
     <h2 class="page-title">¡Bienvenido, {{ usuarioActual?.nombre_completo ?? usuarioActual?.username }}!</h2>
+    <!-- Permiso global: sin group -->
     <p-button
-      *ngIf="tienePermGlobal('group:create')"
+      *appHasPermission="'group:create'"
       label="Agregar Grupo"
       icon="pi pi-plus"
       (onClick)="abrirModal()">
@@ -84,6 +85,12 @@
 
         <ng-template pTemplate="footer">
           <div class="grupo-footer">
+            <!--
+              Lógica compuesta: permiso OR condición de negocio.
+              ngIf evalúa esCreador(), appHasPermission evalúa el permiso.
+              Usamos ngIf externo para la condición de negocio y la directiva para el permiso,
+              pero como es OR necesitamos ngIf en el wrapper.
+            -->
             <p-button
               *ngIf="tienePermEnGrupo(grupo.id, 'group:edit') || esCreador(grupo)"
               icon="pi pi-pencil" severity="info" pTooltip="Editar"

@@ -17,6 +17,7 @@ import { ToastModule }      from 'primeng/toast';
 
 // Servicio
 import { AuthService } from '../../core/services/auth.service';
+import { SharedDataService } from '../../components/shared/shared-data.service';
 
 @Component({
   selector: 'app-login',
@@ -43,7 +44,8 @@ export class LoginComponent {
   constructor(
     private authService:    AuthService,
     private messageService: MessageService,
-    private router:         Router
+    private router:         Router,
+    private sharedData:     SharedDataService,
   ) {}
 
   login(): void {
@@ -60,18 +62,20 @@ export class LoginComponent {
         next: (res) => {
           this.cargando = false;
 
-          // Guardar token y datos del usuario
           this.authService.saveToken(res.data.token);
-          localStorage.setItem('erp_usuario', JSON.stringify(res.data.usuario));
+          localStorage.setItem('erp_usuario', JSON.stringify({ id: res.data.usuario.id }));
 
-          this.messageService.add({
-            severity: 'success',
-            summary:  '¡Bienvenido!',
-            detail:   `Hola, ${res.data.usuario.nombre_completo}`,
-            life:     2000
+          // ✅ Usar .then() en lugar de await para no necesitar async
+          this.sharedData.reset();
+          this.sharedData.inicializar().then(() => {
+            this.messageService.add({
+              severity: 'success',
+              summary:  '¡Bienvenido!',
+              detail:   `Hola, ${res.data.usuario.nombre_completo}`,
+              life:     2000
+            });
+            setTimeout(() => this.router.navigate(['/grupo']), 1500);
           });
-
-          setTimeout(() => this.router.navigate(['/grupo']), 1500);
         },
         error: () => {
           this.cargando = false;

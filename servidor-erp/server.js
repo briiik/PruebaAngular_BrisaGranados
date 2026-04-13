@@ -41,6 +41,91 @@ async function authMiddleware(req, res, next) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MIDDLEWARE DE PERMISOS
+// ─────────────────────────────────────────────────────────────────────────────
+async function permMiddleware(req, res, next) {
+  const method = req.method;
+
+  // Normalizar la ruta para matchear con el mapa
+  // Ej: /api/grupos/uuid-123/miembros → /api/grupos/:id/miembros
+  const routeKey = normalizarRuta(method, req.path);
+  const permisoRequerido = ENDPOINT_PERMISOS[routeKey];
+
+  // Si el endpoint no requiere permiso específico, continúa
+  if (!permisoRequerido) { next(); return; }
+
+  const userId = req.userId;
+
+  // 1. Verificar si tiene permiso global (superadmin)
+  const { data: usuario } = await supabase
+    .from('usuarios')
+    .select('permisos_globales')
+    .eq('id', userId)
+    .single();
+
+  if (usuario?.permisos_globales?.length) {
+    const { data: permisosGlobales } = await supabase
+      .from('permisos')
+      .select('nombre')
+      .in('id', usuario.permisos_globales);
+
+    const nombresGlobales = (permisosGlobales ?? []).map(p => p.nombre);
+    if (nombresGlobales.includes('superadmin') || nombresGlobales.includes(permisoRequerido)) {
+      next(); return;
+    }
+  }
+
+  // 2. Verificar permiso de grupo si aplica
+  const grupoId = req.params.id ?? req.params.grupoId ?? req.body?.grupo_id;
+
+  if (grupoId) {
+    const { data: permisoGrupo } = await supabase
+      .from('grupo_usuario_permisos')
+      .select('permisos(nombre)')
+      .eq('grupo_id', grupoId)
+      .eq('usuario_id', userId);
+
+    const nombresGrupo = (permisoGrupo ?? []).map(p => p.permisos?.nombre);
+    if (nombresGrupo.includes(permisoRequerido)) {
+      next(); return;
+    }
+  }
+
+  // 3. Sin permiso → 403
+  return res.status(403).json({
+    statusCode: 403,
+    intOpCode:  'SxGW403',
+    data: { error: `Permiso requerido: ${permisoRequerido}` }
+  });
+}
+
+// Normaliza URLs con UUIDs a rutas con parámetros
+function normalizarRuta(method, path) {
+  const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+  const normalizada = path.replace(uuidRegex, ':id');
+  return `${method} ${normalizada}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAPA DE PERMISOS POR ENDPOINT
+// ─────────────────────────────────────────────────────────────────────────────
+const ENDPOINT_PERMISOS = {
+  // Grupos
+  'POST /api/grupos':                          'group:create',
+  'PATCH /api/grupos/:id':                     'group:edit',
+  'DELETE /api/grupos/:id':                    'group:delete',
+  'POST /api/grupos/:id/miembros':             'group:add',
+  'DELETE /api/grupos/:id/miembros/:usuarioId':'group:add',
+  'PUT /api/grupos/:id/miembros/:usuarioId/permisos': 'group:manage',
+  'POST /api/grupos/:id/permisos':             'group:manage',
+  'DELETE /api/grupos/:id/permisos':           'group:manage',
+
+  // Tickets
+  'POST /api/tickets':                         'ticket:create',
+  'DELETE /api/tickets/:id':                   'ticket:delete',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RUTAS PÚBLICAS
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/register', register);
@@ -50,6 +135,7 @@ app.post('/api/login',    login);
 // RUTAS PROTEGIDAS
 // ─────────────────────────────────────────────────────────────────────────────
 app.use('/api', authMiddleware);
+app.use('/api', permMiddleware);
 
 // ── Usuarios ──────────────────────────────────────────────────────────────────
 app.post('/api/users',           addUser);

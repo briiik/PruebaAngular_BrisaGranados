@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { PermissionService } from '../../core/services/permission.service';
 
 export interface Usuario {
   id:                string;
@@ -9,6 +10,7 @@ export interface Usuario {
   direccion:         string;
   telefono:          string;
   fecha_inicio:      string;
+  fecha_nacimiento:  string | null;
   last_login:        string | null;
   permisos_globales: string[];   // UUIDs de permisos
   creado_en:         string;
@@ -23,6 +25,8 @@ export interface Permiso {
 
 @Injectable({ providedIn: 'root' })
 export class SharedDataService {
+
+  constructor(private permissionService: PermissionService) {}
 
   private supabase: SupabaseClient = createClient(
     'https://dgmgngfrespeheuzrpso.supabase.co',
@@ -51,7 +55,7 @@ export class SharedDataService {
   }
 
   private async _doInicializar(): Promise<void> {
-  // ✅ Siempre recargar el catálogo fresco al inicializar
+  // Siempre recargar el catálogo fresco al inicializar
     await this.cargarCatalogoPermisos(true);
 
     const raw = localStorage.getItem('erp_usuario');
@@ -71,6 +75,10 @@ export class SharedDataService {
         ...data,
         permisosNombres: this._resolverNombres(data.permisos_globales ?? []),
       };
+      // ← Sincronizar con PermissionService
+      this.permissionService.setPermisosGlobales(
+        this.usuarioActual?.permisosNombres ?? []
+      );
     }
 
     this._listo = true;
@@ -109,5 +117,13 @@ export class SharedDataService {
 
   get db(): SupabaseClient {
     return this.supabase;
+  }
+
+  // Resetea para forzar reinicialización en el próximo inicializar()
+  reset(): void {
+    this._listo        = false;
+    this._inicializando = null;
+    this.usuarioActual  = null;
+    this.todosLosPermisos = [];
   }
 }

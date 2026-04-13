@@ -19,11 +19,13 @@ import { MessageModule }       from 'primeng/message';
 import { SelectModule }        from 'primeng/select';
 import { SkeletonModule }      from 'primeng/skeleton';
 
-import { NavbarComponent }   from '../navbar/navbar.component';
-import { AuthService }       from '../../core/services/auth.service';
-import { GruposService }     from '../../core/services/grupos.service';
-import { TicketsService }    from '../../core/services/tickets.service';
-import { SharedDataService } from '../shared/shared-data.service';
+import { NavbarComponent }        from '../navbar/navbar.component';
+import { AuthService }            from '../../core/services/auth.service';
+import { GruposService }          from '../../core/services/grupos.service';
+import { TicketsService }         from '../../core/services/tickets.service';
+import { SharedDataService }      from '../shared/shared-data.service';
+import { PermissionService }      from '../../core/services/permission.service';
+import { HasPermissionDirective } from '../shared/has-permission.directive';
 
 @Component({
   selector: 'app-grupo',
@@ -34,7 +36,7 @@ import { SharedDataService } from '../shared/shared-data.service';
     ButtonModule, DialogModule, InputTextModule,
     TextareaModule, ConfirmDialogModule, TooltipModule,
     AvatarModule, MessageModule, SelectModule, SkeletonModule,
-    NavbarComponent,
+    NavbarComponent, HasPermissionDirective,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './grupo.component.html',
@@ -44,7 +46,9 @@ export class GrupoComponent implements OnInit {
 
   grupos:   any[] = [];
   cargando = false;
-  usuarioActual: any = null;
+  get usuarioActual(): any {
+    return this.sharedData.usuarioActual;
+  }
 
   // Mapa de permisos por grupo: { "uuid-grupo": ["group:edit", "group:delete", ...] }
   permisosporGrupo: Record<string, string[]> = {};
@@ -65,25 +69,26 @@ export class GrupoComponent implements OnInit {
     private gruposService:       GruposService,
     private ticketsService:      TicketsService,
     private sharedData:          SharedDataService,
+    public  permissionService:   PermissionService,
   ) {}
 
   ngOnInit(): void {
     const raw = localStorage.getItem('erp_usuario');
     if (!raw) { this.router.navigate(['/login']); return; }
-    this.usuarioActual = JSON.parse(raw);
-    this.cargarGrupos();
+
+    this.sharedData.esperarListo().then(() => {
+      if (!this.sharedData.usuarioActual) {
+        this.router.navigate(['/login']); return;
+      }
+      this.cargarGrupos();
+    });
   }
 
   // ── Permisos ────────────────────────────────────────────────────────────────
 
-  // Permisos globales (ej: group:create, superadmin)
-  tienePermGlobal(permiso: string): boolean {
-    return this.sharedData.tienePerm(permiso);
-  }
-
-  // Permisos específicos de un grupo
+  // Permisos específicos de un grupo (usado en lógica TS y casos compuestos en template)
   tienePermEnGrupo(grupoId: string, permiso: string): boolean {
-    return this.permisosporGrupo[grupoId]?.includes(permiso) ?? false;
+    return this.permissionService.hasPermission(permiso, grupoId);
   }
 
   // Verifica si el usuario actual es el creador del grupo
@@ -103,7 +108,6 @@ export class GrupoComponent implements OnInit {
       next: (res) => {
         this.cargando = false;
         this.grupos = res.data ?? [];
-        // Por cada grupo cargamos tickets y permisos individuales
         this.grupos.forEach((g: any) => {
           this.cargarConteoTickets(g);
           this.cargarPermisosDeGrupo(g.id);
@@ -123,6 +127,8 @@ export class GrupoComponent implements OnInit {
   }
 
   cargarPermisosDeGrupo(grupoId: string): void {
+    // Carga en PermissionService (fuente de verdad) y en mapa local para lógica compuesta
+    this.permissionService.refreshPermissionsForGroup(grupoId);
     this.gruposService.getPermisos(grupoId, this.usuarioActual.id).subscribe({
       next: (res) => {
         this.permisosporGrupo[grupoId] = (res.data ?? []).map((p: any) => p.nombre);
@@ -169,7 +175,6 @@ export class GrupoComponent implements OnInit {
     if (!this.validar()) return;
 
     if (this.modoEdicion) {
-      // ← Antes era solo local, ahora llama al backend
       this.gruposService.editarGrupo(this.grupoEditandoId!, this.form.nombre, this.form.descripcion).subscribe({
         next: (res) => {
           const idx = this.grupos.findIndex(g => g.id === this.grupoEditandoId);
@@ -195,7 +200,6 @@ export class GrupoComponent implements OnInit {
             }
           };
           this.grupos = [...this.grupos, nuevoGrupo];
-          // Cargar permisos del grupo recién creado
           this.cargarPermisosDeGrupo(nuevoGrupo.id);
           this.messageService.add({ severity: 'success', summary: 'Creado', detail: 'Grupo creado correctamente' });
         },

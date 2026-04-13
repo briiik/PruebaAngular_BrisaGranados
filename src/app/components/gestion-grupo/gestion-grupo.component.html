@@ -10,7 +10,8 @@
   <p-tabs [value]="'0'">
     <p-tablist>
       <p-tab value="0"><i class="pi pi-users mr-1"></i>Miembros del grupo</p-tab>
-      <p-tab value="1" *ngIf="tienePerm('group:edit')">
+      <!-- Solo permiso, sin condición extra → directiva -->
+      <p-tab value="1" *appHasPermission="'group:edit'; group: grupoId">
         <i class="pi pi-cog mr-1"></i>Configuración
       </p-tab>
     </p-tablist>
@@ -26,8 +27,9 @@
             </span>
           </ng-template>
           <ng-template pTemplate="end">
+            <!-- Solo permiso → directiva -->
             <p-button
-              *ngIf="tienePerm('group:add')"
+              *appHasPermission="'group:add'; group: grupoId"
               label="Agregar miembro"
               icon="pi pi-user-plus"
               severity="success"
@@ -96,17 +98,28 @@
                   <p-button icon="pi pi-eye" severity="info" pTooltip="Ver permisos"
                     (onClick)="abrirModalDetalle(miembro)">
                   </p-button>
-                  <p-button 
-                    *ngIf="tienePerm('group:edit') && !esUsuarioActual(miembro) && !esCreadorGrupo(miembro)"
-                    icon="pi pi-shield"
-                    severity="warn"
-                    pTooltip="Editar permisos"
-                    (onClick)="modalDetalleVisible = false; abrirModalPermisos(miembro)">
-                  </p-button>
-                  <p-button *ngIf="tienePerm('group:add') && !esUsuarioActual(miembro)"
-                    icon="pi pi-trash" severity="danger" pTooltip="Eliminar del grupo"
-                    (onClick)="confirmarEliminarMiembro(miembro)">
-                  </p-button>
+                  <!--
+                    Lógica compuesta: permiso AND condición de negocio.
+                    ngIf externo evalúa condiciones de negocio,
+                    appHasPermission evalúa el permiso de forma independiente.
+                  -->
+                  <ng-container *ngIf="!esUsuarioActual(miembro) && !esCreadorGrupo(miembro)">
+                    <p-button
+                      *appHasPermission="'group:edit'; group: grupoId"
+                      icon="pi pi-shield"
+                      severity="warn"
+                      pTooltip="Editar permisos"
+                      (onClick)="modalDetalleVisible = false; abrirModalPermisos(miembro)">
+                    </p-button>
+                  </ng-container>
+                  <!-- Lógica compuesta: permiso AND condición de negocio -->
+                  <ng-container *ngIf="!esUsuarioActual(miembro) && !esCreadorGrupo(miembro)">
+                    <p-button
+                      *appHasPermission="'group:add'; group: grupoId"
+                      icon="pi pi-trash" severity="danger" pTooltip="Eliminar del grupo"
+                      (onClick)="confirmarEliminarMiembro(miembro)">
+                    </p-button>
+                  </ng-container>
                 </div>
               </td>
             </tr>
@@ -154,7 +167,9 @@
               text="Las acciones en esta sección son irreversibles.">
             </p-message>
             <div class="danger-btns">
-              <p-button *ngIf="tienePerm('group:delete')"
+              <!-- Solo permiso → directiva -->
+              <p-button
+                *appHasPermission="'group:delete'; group: grupoId"
                 label="Eliminar grupo" icon="pi pi-trash" severity="danger"
                 (onClick)="confirmarEliminarGrupo()">
               </p-button>
@@ -175,7 +190,6 @@
 
   <div class="modal-form">
 
-    <!-- Buscar usuario -->
     <div class="form-campo">
       <label class="form-label">Email del usuario *</label>
       <div class="search-row">
@@ -191,7 +205,6 @@
       <small class="p-error" *ngIf="errorEmail">{{ errorEmail }}</small>
     </div>
 
-    <!-- Usuario encontrado -->
     <div *ngIf="usuarioEncontrado" class="usuario-encontrado-card">
       <p-avatar [label]="usuarioEncontrado.nombre_completo?.charAt(0) ?? '?'"
         shape="circle" size="large"
@@ -208,7 +221,6 @@
       <span class="divider-label">Permisos iniciales</span>
     </p-divider>
 
-    <!-- Selector de permisos -->
     <div *ngIf="usuarioEncontrado" class="permisos-selector">
 
       <p-message severity="info"
@@ -317,11 +329,14 @@
     <p-button label="Cerrar" icon="pi pi-times" severity="danger"
       (onClick)="modalDetalleVisible = false">
     </p-button>
-    <p-button
-      *ngIf="tienePerm('group:edit') && !esUsuarioActual(miembroSeleccionado) && !esCreadorGrupo(miembroSeleccionado)"
-      label="Editar permisos" icon="pi pi-shield" severity="warn"
-      (onClick)="modalDetalleVisible = false; abrirModalPermisos(miembroSeleccionado)">
-    </p-button>
+    <!-- Lógica compuesta: permiso AND condiciones de negocio -->
+    <ng-container *ngIf="!esUsuarioActual(miembroSeleccionado) && !esCreadorGrupo(miembroSeleccionado)">
+      <p-button
+        *appHasPermission="'group:edit'; group: grupoId"
+        label="Editar permisos" icon="pi pi-shield" severity="warn"
+        (onClick)="modalDetalleVisible = false; abrirModalPermisos(miembroSeleccionado)">
+      </p-button>
+    </ng-container>
   </ng-template>
 </p-dialog>
 

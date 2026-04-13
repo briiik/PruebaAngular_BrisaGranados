@@ -60,7 +60,7 @@
             <div class="prioridad-row">
               <span>{{ p.nombre }}</span><span>{{ contarPorPrioridad(p.id) }}</span>
             </div>
-            <p-progressbar 
+            <p-progressbar
               [value]="porcentajePrioridad(p.id)"
               [showValue]="false"
               [styleClass]="'prioridad-bar-' + p.nombre.toLowerCase()">
@@ -75,12 +75,15 @@
     <span class="seccion-label">Tickets del grupo</span>
   </p-divider>
 
-  <p-message *ngIf="!tienePerm('ticket:view')"
-    severity="warn" text="No tienes permisos para ver los tickets de este grupo."
+  <!-- Aviso sin permiso: negación del permiso usando permissionService directamente -->
+  <p-message
+    *ngIf="!permissionService.hasPermission('ticket:view', grupoActual?.id)"
+    severity="warn"
+    text="No tienes permisos para ver los tickets de este grupo."
     styleClass="w-full">
   </p-message>
 
-  <div *ngIf="tienePerm('ticket:view')">
+  <div *appHasPermission="'ticket:view'; group: grupoActual?.id">
 
     <!-- Toolbar -->
     <p-toolbar styleClass="mb-3">
@@ -108,11 +111,11 @@
       </ng-template>
       <ng-template pTemplate="end">
         <div class="toolbar-acciones">
-          <p-button *ngIf="tienePerm('group:manage')"
+          <p-button *appHasPermission="'group:manage'; group: grupoActual?.id"
             label="Gestionar grupo" icon="pi pi-cog" severity="warn"
             (onClick)="irAGestion()">
           </p-button>
-          <p-button *ngIf="tienePerm('ticket:create')"
+          <p-button *appHasPermission="'ticket:create'; group: grupoActual?.id"
             label="Nuevo Ticket" icon="pi pi-plus" severity="success"
             (onClick)="abrirModalNuevoTicket()">
           </p-button>
@@ -199,6 +202,7 @@
                 <p-button icon="pi pi-eye" severity="info" pTooltip="Ver"
                   (onClick)="abrirModalDetalle(ticket)">
                 </p-button>
+                <!-- Lógica compuesta: permiso OR autor — se mantiene ngIf -->
                 <p-button *ngIf="puedeEliminarTicket(ticket)"
                   icon="pi pi-trash" severity="danger" pTooltip="Eliminar"
                   (onClick)="confirmarEliminar(ticket)" class="ml-1">
@@ -315,6 +319,7 @@
             </div>
           </div>
           <div class="form-doble">
+            <!-- Lógica compuesta: permiso OR autor — se mantiene ngIf -->
             <div class="form-campo" *ngIf="puedeAsignarTicket(ticketSeleccionado)">
               <label class="form-label">Asignado a</label>
               <p-select [(ngModel)]="formEdicion.asignado_id" [options]="miembros"
@@ -339,16 +344,18 @@
             </div>
           </p-panel>
 
-          <p-message *ngIf="tienePerm('ticket:edit') || esAutorTicket(ticketSeleccionado)"
+          <!-- Mensajes de estado de edición — lógica compuesta, se mantiene ngIf -->
+          <p-message
+            *ngIf="permissionService.hasPermission('ticket:edit', grupoActual?.id) || esAutorTicket(ticketSeleccionado)"
             severity="info"
             text="Tienes acceso completo para editar este ticket.">
           </p-message>
           <p-message
-            *ngIf="!tienePerm('ticket:edit') && !esAutorTicket(ticketSeleccionado) && esAsignadoTicket(ticketSeleccionado)"
+            *ngIf="!permissionService.hasPermission('ticket:edit', grupoActual?.id) && !esAutorTicket(ticketSeleccionado) && esAsignadoTicket(ticketSeleccionado)"
             severity="warn" text="Eres el asignado: solo puedes cambiar el estado y comentar.">
           </p-message>
           <p-message
-            *ngIf="!tienePerm('ticket:edit') && !esAutorTicket(ticketSeleccionado) && !esAsignadoTicket(ticketSeleccionado)"
+            *ngIf="!permissionService.hasPermission('ticket:edit', grupoActual?.id) && !esAutorTicket(ticketSeleccionado) && !esAsignadoTicket(ticketSeleccionado)"
             severity="secondary" text="Modo solo lectura.">
           </p-message>
         </div>
@@ -374,6 +381,7 @@
             </div>
           </div>
           <p-divider></p-divider>
+          <!-- Lógica compuesta: permiso OR autor OR asignado — se mantiene ngIf -->
           <div *ngIf="ticketSeleccionado && puedeComentarEnTicket(ticketSeleccionado)">
             <div class="form-campo">
               <label class="form-label">Nuevo comentario</label>
@@ -458,8 +466,10 @@
       </div>
     </div>
     <div class="form-doble">
-        <div class="form-campo" *ngIf="tienePerm('ticket:assign') || tienePerm('ticket:create')">
-          <label class="form-label">Asignar a</label>
+      <!-- Lógica compuesta: permiso OR otro permiso — se mantiene ngIf -->
+      <div class="form-campo"
+        *ngIf="permissionService.hasPermission('ticket:assign', grupoActual?.id) || permissionService.hasPermission('ticket:create', grupoActual?.id)">
+        <label class="form-label">Asignar a</label>
         <p-select [(ngModel)]="formNuevo.asignado_id" [options]="miembros"
           [optionLabel]="'usuarios.nombre_completo'" optionValue="usuarios.id"
           placeholder="Selecciona integrante"

@@ -25,8 +25,10 @@ import { BreadcrumbModule }    from 'primeng/breadcrumb';
 import { SkeletonModule }      from 'primeng/skeleton';
 import { CheckboxModule }      from 'primeng/checkbox';
 
-import { AuthService }   from '../../core/services/auth.service';
-import { GruposService } from '../../core/services/grupos.service';
+import { AuthService }            from '../../core/services/auth.service';
+import { GruposService }          from '../../core/services/grupos.service';
+import { PermissionService }      from '../../core/services/permission.service';
+import { HasPermissionDirective } from '../shared/has-permission.directive';
 
 @Component({
   selector: 'app-gestion-grupo',
@@ -38,7 +40,7 @@ import { GruposService } from '../../core/services/grupos.service';
     ConfirmDialogModule, TooltipModule, DividerModule,
     SelectModule, ToolbarModule, TabsModule, PanelModule,
     MessageModule, BreadcrumbModule, SkeletonModule,
-    CheckboxModule, NavbarComponent,
+    CheckboxModule, NavbarComponent, HasPermissionDirective,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './gestion-grupo.component.html',
@@ -46,37 +48,35 @@ import { GruposService } from '../../core/services/grupos.service';
 })
 export class GestionGrupoComponent implements OnInit {
 
-  grupo:           any    = null;
-  grupoId:         string = '';
-  usuarioActual:   any    = null;
-  permisosUsuario: string[] = [];
+  grupo:         any    = null;
+  grupoId:       string = '';
+  usuarioActual: any    = null;
 
-  miembros:        any[]  = [];
-  todosPermisos:   any[]  = [];
+  miembros:      any[]  = [];
+  todosPermisos: any[]  = [];
   cargandoMiembros = false;
 
   avatarColors = ['#C9A84C','#10B981','#3B82F6','#EF4444','#8B5CF6','#EC4899','#06B6D4'];
 
   // ── Modal agregar miembro ───────────────────────────────────────────────────
-  modalAgregarVisible  = false;
-  emailAgregar         = '';
-  errorEmail           = '';
-  usuarioEncontrado:   any = null;
-  buscandoUsuario      = false;
-  // Permisos seleccionados para el nuevo miembro
+  modalAgregarVisible    = false;
+  emailAgregar           = '';
+  errorEmail             = '';
+  usuarioEncontrado: any = null;
+  buscandoUsuario        = false;
   permisosSeleccionados: string[] = [];
 
   // ── Modal editar permisos ───────────────────────────────────────────────────
-  modalPermisosVisible    = false;
-  miembroEditandoPermisos: any    = null;
-  permisosEditando:        string[] = [];
-  cargandoPermisosMiembro  = false;
-  guardandoPermisos        = false;
+  modalPermisosVisible      = false;
+  miembroEditandoPermisos: any = null;
+  permisosEditando: string[]   = [];
+  cargandoPermisosMiembro      = false;
+  guardandoPermisos            = false;
 
   // ── Modal detalle ───────────────────────────────────────────────────────────
   modalDetalleVisible  = false;
-  miembroSeleccionado: any   = null;
-  permisosMiembro:     any[] = [];
+  miembroSeleccionado: any = null;
+  permisosMiembro: any[]   = [];
 
   // ── Configuración grupo ─────────────────────────────────────────────────────
   nombreGrupoEdit      = '';
@@ -87,6 +87,7 @@ export class GestionGrupoComponent implements OnInit {
   constructor(
     public  authService:         AuthService,
     private gruposService:       GruposService,
+    public  permissionService:   PermissionService,
     private router:              Router,
     private route:               ActivatedRoute,
     private messageService:      MessageService,
@@ -119,7 +120,7 @@ export class GestionGrupoComponent implements OnInit {
     if (!this.grupo) {
       this.gruposService.getGrupo(this.grupoId).subscribe({
         next: (res) => {
-          this.grupo            = res.data;
+          this.grupo                = res.data;
           this.nombreGrupoEdit      = this.grupo?.nombre      ?? '';
           this.descripcionGrupoEdit = this.grupo?.descripcion ?? '';
         }
@@ -131,20 +132,17 @@ export class GestionGrupoComponent implements OnInit {
   }
 
   cargarPermisos(): void {
-    this.gruposService.getPermisos(this.grupoId, this.usuarioActual.id).subscribe({
-      next: (res) => {
-        this.permisosUsuario = (res.data ?? []).map((p: any) => p.nombre);
-
-        if (!this.tienePerm('group:manage')) {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Acceso denegado',
-            detail: 'No tienes permisos para gestionar este grupo'
-          });
-          this.router.navigate(['/grupo-dashboard', this.grupoId], {
-            state: { grupo: this.grupo }
-          });
-        }
+    // Sincronizar PermissionService con los permisos del grupo actual
+    this.permissionService.refreshPermissionsForGroup(this.grupoId).then(() => {
+      if (!this.permissionService.hasPermission('group:manage', this.grupoId)) {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Acceso denegado',
+          detail: 'No tienes permisos para gestionar este grupo'
+        });
+        this.router.navigate(['/grupo-dashboard', this.grupoId], {
+          state: { grupo: this.grupo }
+        });
       }
     });
   }
@@ -161,44 +159,44 @@ export class GestionGrupoComponent implements OnInit {
   }
 
   cargarTodosPermisos(): void {
-  this.gruposService.getCatalogoPermisos().subscribe({
-    next: (res) => {
-      this.todosPermisos = (res.data ?? []).filter((p: any) =>
-        !['superadmin', 'group:create'].includes(p.nombre)
-      );
-    }
-  });
-}
+    this.gruposService.getCatalogoPermisos().subscribe({
+      next: (res) => {
+        this.todosPermisos = (res.data ?? []).filter((p: any) =>
+          !['superadmin', 'group:create'].includes(p.nombre)
+        );
+      }
+    });
+  }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
+  // Mantiene compatibilidad con el template para casos compuestos (&&)
   tienePerm(permiso: string): boolean {
-    return this.permisosUsuario.includes(permiso);
+    return this.permissionService.hasPermission(permiso, this.grupoId);
   }
 
   esUsuarioActual(miembro: any): boolean {
-  return miembro?.usuarios?.id === this.usuarioActual?.id;
-}
+    return miembro?.usuarios?.id === this.usuarioActual?.id;
+  }
 
-esCreadorGrupo(miembro: any): boolean {
-  return miembro?.usuarios?.id === this.grupo?.creador_id;
-}
+  esCreadorGrupo(miembro: any): boolean {
+    return miembro?.usuarios?.id === this.grupo?.creador_id;
+  }
 
-getNombre(miembro: any): string {
-  return miembro?.usuarios?.nombre_completo ?? miembro?.usuarios?.username ?? '—';
-}
+  getNombre(miembro: any): string {
+    return miembro?.usuarios?.nombre_completo ?? miembro?.usuarios?.username ?? '—';
+  }
 
-getEmail(miembro: any): string {
-  return miembro?.usuarios?.email ?? '—';
-}
+  getEmail(miembro: any): string {
+    return miembro?.usuarios?.email ?? '—';
+  }
 
-getAvatarColor(id: string): string {
-  if (!id) return this.avatarColors[0];
-  const num = parseInt(id.replace(/-/g,'').substring(0, 8), 16);
-  return this.avatarColors[num % this.avatarColors.length];
-}
+  getAvatarColor(id: string): string {
+    if (!id) return this.avatarColors[0];
+    const num = parseInt(id.replace(/-/g,'').substring(0, 8), 16);
+    return this.avatarColors[num % this.avatarColors.length];
+  }
 
-  // Devuelve los permisos de grupo separados de los de ticket para mostrarlos organizados
   permisosDeGrupo(permisos: any[]): any[] {
     return permisos.filter(p => p.nombre.startsWith('group:'));
   }
@@ -210,9 +208,9 @@ getAvatarColor(id: string): string {
   // ── Modal detalle ───────────────────────────────────────────────────────────
 
   abrirModalDetalle(miembro: any): void {
-    this.miembroSeleccionado = miembro;
-    this.permisosMiembro     = [];
-    this.modalDetalleVisible = true;
+    this.miembroSeleccionado     = miembro;
+    this.permisosMiembro         = [];
+    this.modalDetalleVisible     = true;
     this.cargandoPermisosMiembro = true;
 
     this.gruposService.getPermisos(this.grupoId, miembro.usuarios?.id).subscribe({
@@ -235,7 +233,6 @@ getAvatarColor(id: string): string {
     this.gruposService.getPermisos(this.grupoId, miembro.usuarios?.id).subscribe({
       next: (res) => {
         this.cargandoPermisosMiembro = false;
-        // Precargar los permisos actuales del miembro como seleccionados
         this.permisosEditando = (res.data ?? []).map((p: any) => p.id);
       },
       error: () => { this.cargandoPermisosMiembro = false; }
@@ -280,7 +277,6 @@ getAvatarColor(id: string): string {
     this.errorEmail            = '';
     this.usuarioEncontrado     = null;
     this.buscandoUsuario       = false;
-    // Permisos por default: group:view y ticket:view
     this.permisosSeleccionados = this.todosPermisos
       .filter(p => ['group:view', 'ticket:view'].includes(p.nombre))
       .map(p => p.id);
@@ -392,8 +388,7 @@ getAvatarColor(id: string): string {
     ).subscribe({
       next: (res) => {
         this.guardandoGrupo    = false;
-        this.grupo.nombre      = res.data.nombre;
-        this.grupo.descripcion = res.data.descripcion;
+        this.grupo = { ...this.grupo, nombre: res.data.nombre, descripcion: res.data.descripcion };
         this.messageService.add({
           severity: 'success',
           summary: 'Guardado',

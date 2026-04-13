@@ -10,6 +10,7 @@ import { ToastModule } from 'primeng/toast';
 import { SlidebarComponent } from '../slidebar/slidebar.component';
 import { SharedDataService } from '../shared/shared-data.service';
 import { AuthService } from '../../core/services/auth.service';
+import { PermissionService } from '../../core/services/permission.service';
 
 @Component({
   selector: 'app-navbar',
@@ -37,22 +38,24 @@ export class NavbarComponent {
     return this.shared.usuarioActivoNombre;
   }
 
+  // Solo cerrar sesión — el perfil ya está en el slidebar
   userMenuItems: MenuItem[] = [
-    { label: 'Perfil', icon: 'pi pi-user', routerLink: ['/usuario'] },
-    { separator: true },
     { label: 'Cerrar Sesión', icon: 'pi pi-sign-out', command: () => this.cerrarSesion() }
   ];
 
   constructor(
     private router: Router,
     public shared: SharedDataService,
-    private auth: AuthService, // ✅ Inyectar AuthService
+    private auth: AuthService,
+    private permission: PermissionService,
   ) {}
 
   cerrarSesion() {
-    // ✅ Corregido: el token está en una cookie, no en localStorage
     this.auth.clearToken();
-    localStorage.removeItem('usuarioActual'); // por si guardas datos extra aquí
+    localStorage.removeItem('erp_usuario');
+    localStorage.removeItem('pendingRegistration');
+    this.permission.clear();
+    this.shared.reset();
     this.router.navigate(['/login']);
   }
 }

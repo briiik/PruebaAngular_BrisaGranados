@@ -31,9 +31,12 @@ import { MessageModule }       from 'primeng/message';
 import { DatePickerModule }    from 'primeng/datepicker';
 import { SkeletonModule }      from 'primeng/skeleton';
 
-import { AuthService }    from '../../core/services/auth.service';
-import { GruposService }  from '../../core/services/grupos.service';
-import { TicketsService } from '../../core/services/tickets.service';
+import { AuthService }        from '../../core/services/auth.service';
+import { GruposService }      from '../../core/services/grupos.service';
+import { TicketsService }     from '../../core/services/tickets.service';
+import { PermissionService }  from '../../core/services/permission.service';
+
+import { HasPermissionDirective } from '../shared/has-permission.directive';
 
 @Component({
   selector: 'app-grupo-dashboard',
@@ -46,7 +49,7 @@ import { TicketsService } from '../../core/services/tickets.service';
     TimelineModule, PanelModule, ProgressBarModule, BreadcrumbModule,
     SelectModule, ToolbarModule, SelectButtonModule, BadgeModule,
     ChartModule, MessageModule, DatePickerModule, SkeletonModule,
-    NavbarComponent,
+    NavbarComponent, HasPermissionDirective,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './grupo-dashboard.component.html',
@@ -55,19 +58,18 @@ import { TicketsService } from '../../core/services/tickets.service';
 export class GrupoDashboardComponent implements OnInit {
 
   // ── Estado general ──────────────────────────────────────────────────────────
-  grupos:         any[]   = [];
-  grupoActual:    any     = null;
-  tickets:        any[]   = [];
-  ticketsFiltrados: any[] = [];
-  miembros:       any[]   = [];
-  estados:        any[]   = [];
-  prioridades:    any[]   = [];
-  permisosUsuario: string[] = [];   // nombres de permisos, ej: ['ticket:view','ticket:create']
+  grupos:           any[]   = [];
+  grupoActual:      any     = null;
+  tickets:          any[]   = [];
+  ticketsFiltrados: any[]   = [];
+  miembros:         any[]   = [];
+  estados:          any[]   = [];
+  prioridades:      any[]   = [];
 
   cargandoGrupos  = false;
   cargandoTickets = false;
 
-  usuarioActual: any = null;   // objeto del localStorage
+  usuarioActual: any = null;
 
   avatarColors = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4'];
 
@@ -84,14 +86,14 @@ export class GrupoDashboardComponent implements OnInit {
     { label: 'Kanban', value: 'kanban', icon: 'pi pi-th-large' },
   ];
 
-  kanbanColumnas: any[] = [];
-  ticketArrastrado: any = null;
+  kanbanColumnas:   any[] = [];
+  ticketArrastrado: any   = null;
   filtroEstado    = '';
   filtroPrioridad = '';
 
   // ── Modal detalle ───────────────────────────────────────────────────────────
   modalDetalleVisible  = false;
-  ticketSeleccionado:  any   = null;
+  ticketSeleccionado:  any = null;
   nuevoComentario      = '';
   activeTab            = '0';
   formEdicion: any     = {};
@@ -113,6 +115,7 @@ export class GrupoDashboardComponent implements OnInit {
     private authService:         AuthService,
     private gruposService:       GruposService,
     private ticketsService:      TicketsService,
+    public  permissionService:   PermissionService,
   ) {}
 
   ngOnInit(): void {
@@ -120,18 +123,15 @@ export class GrupoDashboardComponent implements OnInit {
     if (!raw) { this.router.navigate(['/login']); return; }
     this.usuarioActual = JSON.parse(raw);
 
-    // Intentar obtener el grupo desde el state de navegación
     const navState = this.router.getCurrentNavigation()?.extras?.state ?? history.state;
     const grupoDesdeNav = navState?.['grupo'] ?? null;
 
     this.cargarCatalogos();
 
     if (grupoDesdeNav) {
-      // Ya sabemos qué grupo es, lo seleccionamos directamente
       this.grupos = [grupoDesdeNav];
       this.seleccionarGrupo(grupoDesdeNav);
     } else {
-      // Fallback: usar el :id de la URL
       const grupoId = this.route.snapshot.paramMap.get('id');
       if (grupoId) {
         this.gruposService.getGrupo(grupoId).subscribe({
@@ -145,13 +145,13 @@ export class GrupoDashboardComponent implements OnInit {
   }
 
   // ── Helpers de permisos ─────────────────────────────────────────────────────
+  // Delegamos al PermissionService — fuente de verdad central
   tienePerm(permiso: string): boolean {
-    return this.permisosUsuario.includes(permiso);
+    return this.permissionService.hasPermission(permiso, this.grupoActual?.id);
   }
 
   // ── Carga de datos ──────────────────────────────────────────────────────────
   cargarCatalogos(): void {
-    // Estados
     this.gruposService['http']
       .get<any>('http://localhost:3000/api/estados', {
         headers: { Authorization: `Bearer ${this.authService.getToken()}` }
@@ -164,7 +164,6 @@ export class GrupoDashboardComponent implements OnInit {
         }
       });
 
-    // Prioridades
     this.gruposService['http']
       .get<any>('http://localhost:3000/api/prioridades', {
         headers: { Authorization: `Bearer ${this.authService.getToken()}` }
@@ -177,23 +176,6 @@ export class GrupoDashboardComponent implements OnInit {
       });
   }
 
-  //cargarGrupos(): void {
-  //  this.cargandoGrupos = true;
-  //  this.gruposService.getMisGrupos().subscribe({
-  //    next: (res) => {
-  //      this.cargandoGrupos = false;
-  //      this.grupos = res.data ?? [];
-  //      if (this.grupos.length > 0) {
-  //        this.seleccionarGrupo(this.grupos[0]);
-  //      }
-  //    },
-  //    error: () => {
-  //      this.cargandoGrupos = false;
-  //      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los grupos' });
-  //    }
-  //  });
-  //}
-
   seleccionarGrupo(grupo: any): void {
     this.grupoActual = grupo;
     this.breadcrumbItems = [
@@ -202,10 +184,10 @@ export class GrupoDashboardComponent implements OnInit {
     ];
 
     this.gruposService.getPermisos(grupo.id, this.usuarioActual.id).subscribe({
-      next: (res) => {
-        this.permisosUsuario = (res.data ?? []).map((p: any) => p.nombre);
+      next: async (res) => {
+        // Sincronizar con PermissionService (fuente de verdad)
+        await this.permissionService.refreshPermissionsForGroup(grupo.id);
 
-        // ← Verificar acceso al dashboard
         if (!this.tienePerm('group:view')) {
           this.messageService.add({
             severity: 'error',
@@ -231,9 +213,7 @@ export class GrupoDashboardComponent implements OnInit {
         this.aplicarFiltros();
         this.actualizarChart();
       },
-      error: () => {
-        this.cargandoTickets = false;
-      }
+      error: () => { this.cargandoTickets = false; }
     });
   }
 
@@ -268,10 +248,10 @@ export class GrupoDashboardComponent implements OnInit {
     event.preventDefault();
     if (!this.ticketArrastrado || this.ticketArrastrado.estado_id === estadoId) return;
 
-    const ticket = this.ticketArrastrado;
+    const ticket     = this.ticketArrastrado;
     const esAsignado = ticket.asignado_id === this.usuarioActual.id;
 
-    if (!this.tienePerm('ticket:edit') && !esAsignado) {
+    if (!this.permissionService.hasPermission('ticket:edit', this.grupoActual?.id) && !esAsignado) {
       this.messageService.add({ severity: 'error', summary: 'Sin permiso', detail: 'No puedes mover este ticket.' });
       this.ticketArrastrado = null;
       return;
@@ -294,17 +274,13 @@ export class GrupoDashboardComponent implements OnInit {
 
   // ── Chart ───────────────────────────────────────────────────────────────────
   actualizarChart(): void {
-    const labels = this.estados.map(e => e.nombre);
+    const labels  = this.estados.map(e => e.nombre);
     const valores = this.estados.map(e => this.tickets.filter(t => t.estado_id === e.id).length);
     const colores = ['#F59E0B','#3B82F6','#8B5CF6','#10B981'];
 
     this.chartData = {
       labels,
-      datasets: [{
-        data: valores,
-        backgroundColor: colores,
-        hoverBackgroundColor: colores,
-      }]
+      datasets: [{ data: valores, backgroundColor: colores, hoverBackgroundColor: colores }]
     };
     this.chartOptions = {
       responsive: true, maintainAspectRatio: false,
@@ -331,7 +307,6 @@ export class GrupoDashboardComponent implements OnInit {
     this.ticketSeleccionado  = null;
     this.activeTab = '0';
     setTimeout(() => {
-      // Cargar detalle completo (con comentarios e historial)
       this.ticketsService.getTicket(ticket.id).subscribe({
         next: (res) => {
           this.ticketSeleccionado = res.data;
@@ -343,7 +318,7 @@ export class GrupoDashboardComponent implements OnInit {
             asignado_id:     res.data.asignado_id,
             fechaLimiteDate: res.data.fecha_final ? new Date(res.data.fecha_final) : null,
           };
-          this.nuevoComentario    = '';
+          this.nuevoComentario     = '';
           this.modalDetalleVisible = true;
         }
       });
@@ -362,7 +337,7 @@ export class GrupoDashboardComponent implements OnInit {
     const payload: any = {};
     const esAutor    = this.esAutorTicket(this.ticketSeleccionado);
     const esAsignado = this.esAsignadoTicket(this.ticketSeleccionado);
-    const puedeEdit  = this.tienePerm('ticket:edit') || esAutor;
+    const puedeEdit  = this.permissionService.hasPermission('ticket:edit', this.grupoActual?.id) || esAutor;
 
     if (puedeEdit) {
       payload.titulo       = this.formEdicion.titulo;
@@ -373,12 +348,10 @@ export class GrupoDashboardComponent implements OnInit {
       }
     }
 
-    // Asignar: solo si tiene permiso o es autor
-    if (this.tienePerm('ticket:assign') || esAutor) {
+    if (this.permissionService.hasPermission('ticket:assign', this.grupoActual?.id) || esAutor) {
       payload.asignado_id = this.formEdicion.asignado_id;
     }
 
-    // Estado: si puede editar o es el asignado
     if (puedeEdit || esAsignado) {
       payload.estado_id = this.formEdicion.estado_id;
     }
@@ -407,7 +380,6 @@ export class GrupoDashboardComponent implements OnInit {
       next: () => {
         this.nuevoComentario = '';
         this.messageService.add({ severity: 'success', summary: 'Comentario', detail: 'Comentario agregado' });
-        // Recargar detalle para mostrar el nuevo comentario
         this.ticketsService.getTicket(this.ticketSeleccionado.id).subscribe({
           next: (res) => { this.ticketSeleccionado = res.data; }
         });
@@ -420,15 +392,15 @@ export class GrupoDashboardComponent implements OnInit {
 
   // ── Modal nuevo ticket ──────────────────────────────────────────────────────
   abrirModalNuevoTicket(): void {
-    this.formNuevo    = {
+    this.formNuevo = {
       titulo:          '',
       descripcion:     '',
       estado_id:       this.estados[0]?.id ?? '',
-      prioridad_id:    this.prioridades[1]?.id ?? '',  // Media por defecto
+      prioridad_id:    this.prioridades[1]?.id ?? '',
       asignado_id:     '',
       fechaLimiteDate: null
     };
-    this.erroresNuevo     = {};
+    this.erroresNuevo      = {};
     this.modalNuevoVisible = true;
   }
 
@@ -440,13 +412,13 @@ export class GrupoDashboardComponent implements OnInit {
     }
 
     const payload = {
-      grupo_id:    this.grupoActual.id,
-      titulo:      this.formNuevo.titulo.trim(),
-      descripcion: this.formNuevo.descripcion,
-      estado_id:   this.formNuevo.estado_id,
+      grupo_id:     this.grupoActual.id,
+      titulo:       this.formNuevo.titulo.trim(),
+      descripcion:  this.formNuevo.descripcion,
+      estado_id:    this.formNuevo.estado_id,
       prioridad_id: this.formNuevo.prioridad_id,
-      asignado_id: this.formNuevo.asignado_id || null,
-      fecha_final: this.formNuevo.fechaLimiteDate
+      asignado_id:  this.formNuevo.asignado_id || null,
+      fecha_final:  this.formNuevo.fechaLimiteDate
         ? this.formNuevo.fechaLimiteDate.toISOString() : null
     };
 
@@ -480,15 +452,6 @@ export class GrupoDashboardComponent implements OnInit {
   }
 
   // ── Helpers de UI ───────────────────────────────────────────────────────────
-  getNombreEstado(estadoId: string): string {
-    return this.estados.find(e => e.id === estadoId)?.nombre ?? estadoId;
-  }
-  getNombrePrioridad(prioridadId: string): string {
-    return this.prioridades.find(p => p.id === prioridadId)?.nombre ?? prioridadId;
-  }
-  getColorEstado(estadoId: string): string {
-    return this.estados.find(e => e.id === estadoId)?.color ?? '#ccc';
-  }
   getAvatarColor(idx: number): string {
     return this.avatarColors[idx % this.avatarColors.length];
   }
@@ -506,53 +469,43 @@ export class GrupoDashboardComponent implements OnInit {
 
   puedeEditarCampo(campo: string): boolean {
     if (!this.ticketSeleccionado) return false;
-    // Edición completa: tiene permiso o es autor
-    if (this.tienePerm('ticket:edit') || this.esAutorTicket(this.ticketSeleccionado)) return true;
-    // El asignado solo puede cambiar el estado
+    if (this.permissionService.hasPermission('ticket:edit', this.grupoActual?.id) || this.esAutorTicket(this.ticketSeleccionado)) return true;
     if (this.esAsignadoTicket(this.ticketSeleccionado)) return campo === 'estado_id';
     return false;
   }
 
   puedeEditarAlgo(): boolean {
     if (!this.ticketSeleccionado) return false;
-    return this.puedeEditarTicket(this.ticketSeleccionado) || 
-          this.esAsignadoTicket(this.ticketSeleccionado);
+    return this.puedeEditarTicket(this.ticketSeleccionado) ||
+           this.esAsignadoTicket(this.ticketSeleccionado);
   }
 
-// ── Permisos de tickets ────────────────────────────────────────────────────
-esAutorTicket(ticket: any): boolean {
-  return ticket?.autor_id === this.usuarioActual?.id;
-}
+  // ── Permisos de tickets ────────────────────────────────────────────────────
+  esAutorTicket(ticket: any): boolean {
+    return ticket?.autor_id === this.usuarioActual?.id;
+  }
 
-esAsignadoTicket(ticket: any): boolean {
-  return ticket?.asignado_id === this.usuarioActual?.id;
-}
+  esAsignadoTicket(ticket: any): boolean {
+    return ticket?.asignado_id === this.usuarioActual?.id;
+  }
 
-puedeCrearTicket(): boolean {
-  return this.tienePerm('ticket:create');
-}
+  puedeEditarTicket(ticket: any): boolean {
+    return this.permissionService.hasPermission('ticket:edit', this.grupoActual?.id) || this.esAutorTicket(ticket);
+  }
 
-puedeEditarTicket(ticket: any): boolean {
-  // Tiene permiso explícito O es el autor del ticket
-  return this.tienePerm('ticket:edit') || this.esAutorTicket(ticket);
-}
+  puedeEliminarTicket(ticket: any): boolean {
+    return this.permissionService.hasPermission('ticket:delete', this.grupoActual?.id) || this.esAutorTicket(ticket);
+  }
 
-puedeEliminarTicket(ticket: any): boolean {
-  // Tiene permiso explícito O es el autor del ticket
-  return this.tienePerm('ticket:delete') || this.esAutorTicket(ticket);
-}
+  puedeAsignarTicket(ticket: any): boolean {
+    return this.permissionService.hasPermission('ticket:assign', this.grupoActual?.id) || this.esAutorTicket(ticket);
+  }
 
-puedeAsignarTicket(ticket: any): boolean {
-  // Tiene permiso explícito O es el autor del ticket
-  return this.tienePerm('ticket:assign') || this.esAutorTicket(ticket);
-}
-
-puedeComentarEnTicket(ticket: any): boolean {
-  // Puede comentar si tiene permiso de editar, es autor o es el asignado
-  return this.tienePerm('ticket:edit') || 
-         this.esAutorTicket(ticket) || 
-         this.esAsignadoTicket(ticket);
-}
+  puedeComentarEnTicket(ticket: any): boolean {
+    return this.permissionService.hasPermission('ticket:edit', this.grupoActual?.id) ||
+           this.esAutorTicket(ticket) ||
+           this.esAsignadoTicket(ticket);
+  }
 
   volver(): void { this.router.navigate(['/grupo']); }
 
